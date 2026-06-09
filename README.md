@@ -41,6 +41,19 @@ git checkout -b feat/nombre-de-la-funcionalidad
 git add .
 git commit -m "feat: agrega módulo de networking"
 ```
+feat/ → nuevas funcionalidades
+
+fix/ → corrección de errores
+
+docs/ → documentación
+
+refactor/ → reorganización o mejora del código sin cambiar funcionalidad
+
+chore/ → tareas de mantenimiento
+
+ci/ → cambios en CI/CD
+
+infra/ → cambios de infraestructura
 
 ### Subir la rama al remoto
 
@@ -120,5 +133,4 @@ terraform plan -var-file="dev.tfvars"
 terraform apply -var-file="dev.tfvars"
 ```
 
-**Importante:** Revisa el plan antes de aplicar cambios en producción.
-
+**Importante:** Revisa el plan antes de aplicar cambios en producción
