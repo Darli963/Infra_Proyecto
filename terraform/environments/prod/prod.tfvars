@@ -1,0 +1,10 @@
+aws_region        = "us-east-1"
+project_name      = "infra-proyecto"
+environment       = "prod"
+vpc_id            = "vpc-yyyyyyyyyyyyyyyyy"
+vpc_cidr          = "10.1.0.0/16"
+alb_ingress_cidrs = ["0.0.0.0/0"]
+alb_ingress_ports = [80, 443]
+ec2_ingress_ports = [80]
+aurora_port       = 3306
+redis_port        = 6379
