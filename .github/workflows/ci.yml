@@ -51,6 +51,11 @@ jobs:
         run: terraform fmt -check -recursive "${{ github.workspace }}/terraform"
 
       - name: Terraform init
+        env:
+          AWS_ACCESS_KEY_ID: dummy
+          AWS_SECRET_ACCESS_KEY: dummy
+          AWS_DEFAULT_REGION: us-east-1
+          AWS_EC2_METADATA_DISABLED: "true"
         run: terraform init -reconfigure
 
       - name: Terraform validate
