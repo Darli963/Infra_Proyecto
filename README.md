@@ -134,3 +134,23 @@ terraform apply -var-file="dev.tfvars"
 ```
 
 **Importante:** Revisa el plan antes de aplicar cambios en producción
+
+## Bootstrap mínimo del repositorio
+
+Antes de automatizar despliegues, este repositorio debe mantener estas bases:
+
+- estructura de `terraform/environments` y `terraform/modules`
+- `ci.yml` con `terraform fmt -check`, `terraform init`, `terraform validate` y `terraform plan`
+- variables por ambiente claras en `variables.tf` y `*.tfvars`
+- versionado de providers con `.terraform.lock.hcl`
+- reglas de `.gitignore` para no subir `.terraform/`, `terraform.tfstate*` ni archivos locales
+
+## Orden recomendado
+
+1. estructura base del repo
+2. CI mínimo de IaC
+3. Fase 1 de networking
+4. validación manual en `dev`
+5. pipeline `deploy_dev`
+6. módulos restantes
+7. pipeline `deploy_prod`
