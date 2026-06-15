@@ -1,16 +1,16 @@
 skip_aws_validation = true
 
-aws_region     = "us-east-1"
-project_name   = "infra-proyecto"
-environment    = "prod"
+aws_region   = "us-east-1"
+project_name = "infra-proyecto"
+environment  = "prod"
 
 # Networking
-vpc_cidr              = "10.100.0.0/16"
-availability_zones    = ["us-east-1a", "us-east-1b", "us-east-1c"]
-public_subnet_cidrs   = ["10.100.1.0/24", "10.100.2.0/24", "10.100.3.0/24"]
-private_subnet_cidrs  = ["10.100.10.0/24", "10.100.11.0/24", "10.100.12.0/24"]
+vpc_cidr                = "10.100.0.0/16"
+availability_zones      = ["us-east-1a", "us-east-1b", "us-east-1c"]
+public_subnet_cidrs     = ["10.100.1.0/24", "10.100.2.0/24", "10.100.3.0/24"]
+private_subnet_cidrs    = ["10.100.10.0/24", "10.100.11.0/24", "10.100.12.0/24"]
 map_public_ip_on_launch = false
-single_nat_gateway    = false
+single_nat_gateway      = false
 
 # Security Groups
 alb_ingress_cidrs = ["0.0.0.0/0"]

@@ -20,7 +20,7 @@ output "internet_gateway_id" {
 
 output "nat_gateway_id" {
   description = "ID del NAT Gateway."
-  value       = aws_nat_gateway.this[0].id
+  value       = var.single_nat_gateway ? aws_nat_gateway.this[0].id : null
 }
 
 output "public_route_table_id" {

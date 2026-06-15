@@ -62,11 +62,6 @@ variable "single_nat_gateway" {
 
 # --- Security Groups ---
 
-variable "vpc_id" {
-  description = "ID de la VPC existente donde se integrara la fase de seguridad."
-  type        = string
-}
-
 variable "alb_ingress_cidrs" {
   description = "CIDRs externos autorizados hacia el ALB."
   type        = list(string)

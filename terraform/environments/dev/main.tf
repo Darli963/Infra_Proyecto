@@ -14,7 +14,7 @@ module "security_base" {
   source = "../../modules/security_base"
 
   name              = local.name_prefix
-  vpc_id            = var.vpc_id
+  vpc_id            = module.networking.vpc_id
   vpc_cidr          = var.vpc_cidr
   alb_ingress_cidrs = var.alb_ingress_cidrs
   alb_ingress_ports = var.alb_ingress_ports
