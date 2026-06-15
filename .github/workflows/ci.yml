@@ -34,9 +34,6 @@ jobs:
         environment:
           - dev
           - prod
-    defaults:
-      run:
-        working-directory: terraform/environments/${{ matrix.environment }}
 
     steps:
       - name: Checkout repository
@@ -51,6 +48,7 @@ jobs:
         run: terraform fmt -check -recursive "${{ github.workspace }}/terraform"
 
       - name: Terraform init
+        working-directory: terraform/environments/${{ matrix.environment }}
         env:
           AWS_ACCESS_KEY_ID: dummy
           AWS_SECRET_ACCESS_KEY: dummy
@@ -58,10 +56,19 @@ jobs:
           AWS_EC2_METADATA_DISABLED: "true"
         run: terraform init -reconfigure
 
+      - name: Debug
+        working-directory: terraform/environments/${{ matrix.environment }}
+        run: |
+          pwd
+          ls -la
+          ls -la .terraform
+
       - name: Terraform validate
+        working-directory: terraform/environments/${{ matrix.environment }}
         run: terraform validate
 
       - name: Terraform plan
+        working-directory: terraform/environments/${{ matrix.environment }}
         env:
           AWS_ACCESS_KEY_ID: dummy
           AWS_SECRET_ACCESS_KEY: dummy
