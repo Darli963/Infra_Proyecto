@@ -3,6 +3,12 @@ variable "aws_region" {
   type        = string
 }
 
+variable "skip_aws_validation" {
+  description = "Omite validaciones AWS del provider para CI con credenciales dummy."
+  type        = bool
+  default     = false
+}
+
 variable "project_name" {
   description = "Nombre base del proyecto."
   type        = string
@@ -18,12 +24,6 @@ variable "common_tags" {
   description = "Etiquetas adicionales para el ambiente."
   type        = map(string)
   default     = {}
-}
-
-variable "skip_aws_validation" {
-  description = "Skips AWS credential/metadata checks (useful for LocalStack or CI environments)"
-  type        = bool
-  default     = false
 }
 
 # --- Networking ---
