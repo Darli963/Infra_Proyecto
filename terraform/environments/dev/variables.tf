@@ -1,17 +1,22 @@
-variable "aws_region" {
-  description = "Región AWS donde se desplegará el ambiente dev."
-  type        = string
-}
-
 variable "project_name" {
-  description = "Nombre del proyecto usado como prefijo de recursos."
+  description = "Nombre base del proyecto."
   type        = string
 }
 
 variable "environment" {
-  description = "Nombre del ambiente."
+  description = "Ambiente objetivo."
   type        = string
-  default     = "dev"
+}
+
+variable "aws_region" {
+  description = "Region de AWS."
+  type        = string
+}
+
+variable "common_tags" {
+  description = "Etiquetas adicionales para el ambiente."
+  type        = map(string)
+  default     = {}
 }
 
 variable "vpc_cidr" {
