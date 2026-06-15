@@ -4,23 +4,66 @@ variable "aws_region" {
 }
 
 variable "project_name" {
-  description = "Nombre del proyecto usado como prefijo de recursos."
+  description = "Nombre base del proyecto."
   type        = string
 }
 
 variable "environment" {
-  description = "Nombre del ambiente."
+  description = "Ambiente objetivo."
   type        = string
   default     = "prod"
 }
 
-variable "vpc_id" {
-  description = "ID de la VPC existente donde se integrara la fase de seguridad."
+variable "common_tags" {
+  description = "Etiquetas adicionales para el ambiente."
+  type        = map(string)
+  default     = {}
+}
+
+variable "skip_aws_validation" {
+  description = "Skips AWS credential/metadata checks (useful for LocalStack or CI environments)"
+  type        = bool
+  default     = false
+}
+
+# --- Networking ---
+
+variable "vpc_cidr" {
+  description = "CIDR principal de la VPC."
   type        = string
 }
 
-variable "vpc_cidr" {
-  description = "CIDR de la VPC existente para limitar trafico interno."
+variable "availability_zones" {
+  description = "Availability Zones usadas por el ambiente prod."
+  type        = list(string)
+}
+
+variable "public_subnet_cidrs" {
+  description = "CIDRs de las subnets públicas."
+  type        = list(string)
+}
+
+variable "private_subnet_cidrs" {
+  description = "CIDRs de las subnets privadas."
+  type        = list(string)
+}
+
+variable "map_public_ip_on_launch" {
+  description = "Si las subnets públicas deben asignar IP pública automáticamente."
+  type        = bool
+  default     = true
+}
+
+variable "single_nat_gateway" {
+  description = "Usa un solo NAT Gateway para el ambiente prod."
+  type        = bool
+  default     = false
+}
+
+# --- Security Groups ---
+
+variable "vpc_id" {
+  description = "ID de la VPC existente donde se integrara la fase de seguridad."
   type        = string
 }
 
