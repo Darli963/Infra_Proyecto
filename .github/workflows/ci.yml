@@ -46,7 +46,7 @@ jobs:
         run: terraform fmt -check -recursive "${{ github.workspace }}/terraform"
 
       - name: Terraform init
-        run: terraform init -backend=false
+        run: terraform init -reconfigure
 
       - name: Terraform validate
         run: terraform validate
