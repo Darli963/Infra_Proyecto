@@ -27,6 +27,7 @@ jobs:
       AWS_ACCESS_KEY_ID: dummy
       AWS_SECRET_ACCESS_KEY: dummy
       AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
     strategy:
       fail-fast: false
       matrix:
@@ -56,4 +57,9 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
+        env:
+          AWS_ACCESS_KEY_ID: dummy
+          AWS_SECRET_ACCESS_KEY: dummy
+          AWS_DEFAULT_REGION: us-east-1
+          AWS_EC2_METADATA_DISABLED: "true"
         run: terraform plan -refresh=false -lock=false -input=false -var-file="${{ matrix.environment }}.tfvars"
