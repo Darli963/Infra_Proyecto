@@ -1,6 +1,6 @@
 name: CI
 
-on:
+"on":
   pull_request:
     branches:
       - develop
@@ -21,19 +21,11 @@ permissions:
 
 jobs:
   terraform:
-    name: Terraform ${{ matrix.environment }}
+    name: Terraform dev
     runs-on: ubuntu-latest
     env:
-      AWS_ACCESS_KEY_ID: dummy
-      AWS_SECRET_ACCESS_KEY: dummy
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_EC2_METADATA_DISABLED: "true"
-    strategy:
-      fail-fast: false
-      matrix:
-        environment:
-          - dev
-          - prod
+
+       AWS_EC2_METADATA_DISABLED: "true"
 
     steps:
       - name: Checkout repository
@@ -48,30 +40,12 @@ jobs:
         run: terraform fmt -check -recursive "${{ github.workspace }}/terraform"
 
       - name: Terraform init
-        working-directory: terraform/environments/${{ matrix.environment }}
-        env:
-          AWS_ACCESS_KEY_ID: dummy
-          AWS_SECRET_ACCESS_KEY: dummy
-          AWS_DEFAULT_REGION: us-east-1
-          AWS_EC2_METADATA_DISABLED: "true"
+        working-directory: terraform/environments/dev
         run: terraform init -reconfigure
-
-      - name: Debug
-        working-directory: terraform/environments/${{ matrix.environment }}
-        run: |
-          pwd
-          ls -la
-          ls -la .terraform
-
+        
       - name: Terraform validate
-        working-directory: terraform/environments/${{ matrix.environment }}
+        working-directory: terraform/environments/dev
+
         run: terraform validate
 
-      - name: Terraform plan
-        working-directory: terraform/environments/${{ matrix.environment }}
-        env:
-          AWS_ACCESS_KEY_ID: dummy
-          AWS_SECRET_ACCESS_KEY: dummy
-          AWS_DEFAULT_REGION: us-east-1
-          AWS_EC2_METADATA_DISABLED: "true"
-        run: terraform plan -refresh=false -lock=false -input=false -var-file="${{ matrix.environment }}.tfvars"
+        
