@@ -24,6 +24,59 @@ module "security_base" {
   tags              = local.common_tags
 }
 
+module "storage" {
+  source = "../../modules/storage"
+
+  bucket_name        = var.app_bucket_name
+  force_destroy      = var.bucket_force_destroy
+  versioning_enabled = var.bucket_versioning_enabled
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-assets"
+      Tier = "storage"
+    }
+  )
+}
+
+module "database" {
+  source = "../../modules/database"
+
+  name                         = local.name_prefix
+  private_subnet_ids           = module.networking.private_subnet_ids
+  aurora_security_group_id     = module.security_base.security_group_ids.aurora
+  database_name                = var.db_name
+  master_username              = var.db_master_username
+  port                         = var.aurora_port
+  engine                       = var.db_engine
+  engine_version               = var.db_engine_version
+  instance_class               = var.db_instance_class
+  instance_count               = var.db_instance_count
+  backup_retention_period      = var.db_backup_retention_period
+  preferred_backup_window      = var.db_preferred_backup_window
+  preferred_maintenance_window = var.db_preferred_maintenance_window
+  skip_final_snapshot          = var.db_skip_final_snapshot
+  deletion_protection          = var.db_deletion_protection
+  apply_immediately            = var.db_apply_immediately
+  secret_name                  = var.db_secret_name
+  tags                         = local.common_tags
+}
+
+module "cache" {
+  source = "../../modules/cache"
+
+  enabled                 = var.enable_redis
+  name                    = local.name_prefix
+  private_subnet_ids      = module.networking.private_subnet_ids
+  redis_security_group_id = module.security_base.security_group_ids.redis
+  node_type               = var.redis_node_type
+  port                    = var.redis_port
+  engine_version          = var.redis_engine_version
+  num_cache_clusters      = var.redis_num_cache_clusters
+  secret_name             = var.redis_secret_name
+  tags                    = local.common_tags
+}
+
 module "networking" {
   source = "../../modules/networking"
 
