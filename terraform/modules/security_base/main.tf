@@ -130,6 +130,17 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = [var.vpc_cidr]
   }
 
+  dynamic "egress" {
+    for_each = toset(var.external_database_egress_cidrs)
+    content {
+      description = "EC2 hacia bases de datos externas puerto ${var.aurora_port}"
+      from_port   = var.aurora_port
+      to_port     = var.aurora_port
+      protocol    = "tcp"
+      cidr_blocks = [egress.value]
+    }
+  }
+
   egress {
     description = "EC2 hacia Redis"
     from_port   = var.redis_port

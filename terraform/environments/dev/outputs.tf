@@ -40,32 +40,32 @@ output "s3_bucket_regional_domain_name" {
 
 output "aurora_cluster_id" {
   description = "ID del cluster Aurora."
-  value       = module.database.cluster_id
+  value       = local.database_cluster_id
 }
 
 output "aurora_endpoint" {
   description = "Endpoint principal del cluster Aurora."
-  value       = module.database.cluster_endpoint
+  value       = local.database_endpoint
 }
 
 output "aurora_reader_endpoint" {
   description = "Endpoint de lectura del cluster Aurora."
-  value       = module.database.reader_endpoint
+  value       = local.database_reader_endpoint
 }
 
 output "aurora_db_subnet_group_name" {
   description = "Nombre del DB subnet group usado por Aurora."
-  value       = module.database.db_subnet_group_name
+  value       = local.database_db_subnet_group_name
 }
 
 output "aurora_secret_name" {
   description = "Nombre del secreto de Aurora en Secrets Manager."
-  value       = module.database.secret_name
+  value       = local.database_secret_name
 }
 
 output "aurora_secret_arn" {
   description = "ARN del secreto de Aurora en Secrets Manager."
-  value       = module.database.secret_arn
+  value       = local.database_secret_arn
   sensitive   = true
 }
 
@@ -83,4 +83,29 @@ output "redis_secret_arn" {
   description = "ARN del secreto de Redis si aplica."
   value       = module.cache.secret_arn
   sensitive   = true
+}
+
+output "test_instance_id" {
+  description = "ID de la EC2 privada de prueba para la Fase 4."
+  value       = module.compute.instance_id
+}
+
+output "test_instance_private_ip" {
+  description = "IP privada de la EC2 de prueba."
+  value       = module.compute.private_ip
+}
+
+output "test_instance_private_dns" {
+  description = "DNS privado de la EC2 de prueba."
+  value       = module.compute.private_dns
+}
+
+output "test_instance_ami_id" {
+  description = "AMI usada por la EC2 privada de prueba."
+  value       = nonsensitive(module.compute.ami_id)
+}
+
+output "test_instance_ssm_start_session_command" {
+  description = "Comando sugerido para entrar por Session Manager a la EC2 de prueba."
+  value       = module.compute.ssm_start_session_command
 }

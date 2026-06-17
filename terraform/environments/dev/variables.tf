@@ -86,6 +86,12 @@ variable "aurora_port" {
   default     = 3306
 }
 
+variable "external_database_egress_cidrs" {
+  description = "CIDRs externos permitidos para conexiones de base de datos desde EC2."
+  type        = list(string)
+  default     = []
+}
+
 variable "redis_port" {
   description = "Puerto de Redis habilitado desde EC2."
   type        = number
@@ -117,6 +123,31 @@ variable "db_name" {
   description = "Nombre inicial de la base de datos Aurora."
   type        = string
   default     = "appdb"
+}
+
+variable "database_mode" {
+  description = "Modo de base de datos: `standard` para Aurora en VPC o `express` para Aurora Express administrada externamente."
+  type        = string
+  default     = "standard"
+
+  validation {
+    condition     = contains(["standard", "express"], var.database_mode)
+    error_message = "database_mode debe ser `standard` o `express`."
+  }
+}
+
+variable "external_aurora_cluster_identifier" {
+  description = "Identificador de un cluster Aurora Express existente cuando database_mode = `express`."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "external_aurora_secret_name" {
+  description = "Nombre de un secreto existente de Aurora cuando database_mode = `express`."
+  type        = string
+  default     = null
+  nullable    = true
 }
 
 variable "db_master_username" {
@@ -220,4 +251,67 @@ variable "redis_secret_name" {
   description = "Nombre del secreto opcional de Redis en Secrets Manager."
   type        = string
   default     = null
+}
+
+# --- Compute / Phase 4 ---
+
+variable "enable_test_instance" {
+  description = "Activa una sola EC2 privada de prueba para la Fase 4."
+  type        = bool
+  default     = false
+}
+
+variable "test_instance_type" {
+  description = "Tipo de instancia para la EC2 privada de prueba."
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "test_instance_ami_id" {
+  description = "AMI opcional para la EC2 de prueba. Si es null se resuelve desde SSM."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "test_instance_root_volume_size" {
+  description = "Tamano del volumen raiz de la EC2 de prueba."
+  type        = number
+  default     = 16
+}
+
+variable "test_instance_root_volume_type" {
+  description = "Tipo de volumen raiz de la EC2 de prueba."
+  type        = string
+  default     = "gp3"
+}
+
+variable "test_instance_enable_detailed_monitoring" {
+  description = "Activa detailed monitoring en la EC2 de prueba."
+  type        = bool
+  default     = false
+}
+
+variable "test_instance_nodejs_major_version" {
+  description = "Version mayor de Node.js que se instala en el bootstrap inicial."
+  type        = number
+  default     = 20
+}
+
+variable "test_instance_app_base_dir" {
+  description = "Directorio base preparado para el despliegue manual inicial."
+  type        = string
+  default     = "/opt/phase4-app"
+}
+
+variable "test_instance_app_port" {
+  description = "Puerto local esperado para la app en la EC2 de prueba."
+  type        = number
+  default     = 3000
+}
+
+variable "db_connect_resource_arns" {
+  description = "ARNs permitidos para autenticacion IAM hacia RDS desde la EC2 de prueba."
+  type        = list(string)
+  default     = []
 }
