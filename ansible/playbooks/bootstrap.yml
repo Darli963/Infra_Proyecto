@@ -1,0 +1,51 @@
+- name: Bootstrap de la EC2 privada de prueba
+  hosts: phase4_test
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Instalar paquetes base requeridos
+      ansible.builtin.package:
+        name:
+          - curl
+          - gcc-c++
+          - git
+          - jq
+          - make
+          - python3
+          - tar
+        state: present
+
+    - name: Consultar version actual de Node.js
+      ansible.builtin.command: node --version
+      register: node_version
+      changed_when: false
+      failed_when: false
+
+    - name: Instalar Node.js 20 si no esta disponible
+      ansible.builtin.shell: |
+        set -euo pipefail
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+        dnf install -y nodejs
+      args:
+        executable: /bin/bash
+      when: node_version.rc != 0 or not node_version.stdout.startswith('v20.')
+
+    - name: Asegurar que Session Manager quede habilitado
+      ansible.builtin.service:
+        name: amazon-ssm-agent
+        state: started
+        enabled: true
+
+    - name: Crear estructura base para la app de prueba
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+        mode: "0755"
+      loop:
+        - "{{ phase4_app_root }}"
+        - "{{ phase4_app_root }}/bin"
+        - "{{ phase4_app_root }}/releases"
+        - "{{ phase4_app_dir }}"

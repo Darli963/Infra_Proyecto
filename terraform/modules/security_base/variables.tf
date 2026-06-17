@@ -52,6 +52,12 @@ variable "aurora_port" {
   }
 }
 
+variable "external_database_egress_cidrs" {
+  description = "CIDRs externos permitidos para conexiones de base de datos desde EC2."
+  type        = list(string)
+  default     = []
+}
+
 variable "redis_port" {
   description = "Puerto de Redis permitido solo desde EC2."
   type        = number

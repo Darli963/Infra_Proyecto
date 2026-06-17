@@ -1,0 +1,12 @@
+ansible_connection: amazon.aws.aws_ssm
+ansible_user: ec2-user
+ansible_python_interpreter: /usr/bin/python3
+ansible_aws_ssm_region: "{{ lookup('env', 'AWS_REGION') | default('us-east-1', true) }}"
+
+phase4_app_name: phase4-smoke-app
+phase4_service_name: phase4-smoke-app
+phase4_app_root: /opt/phase4-app
+phase4_app_dir: "{{ phase4_app_root }}/current"
+phase4_app_port: 3000
+phase4_node_env: development
+phase4_aurora_secret_name: ""
