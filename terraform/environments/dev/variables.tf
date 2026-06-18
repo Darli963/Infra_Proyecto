@@ -315,3 +315,126 @@ variable "db_connect_resource_arns" {
   type        = list(string)
   default     = []
 }
+
+# --- Balanceo y escalado ---
+
+variable "enable_load_balancer" {
+  description = "Activa el Application Load Balancer y su target group."
+  type        = bool
+  default     = false
+}
+
+variable "load_balancer_listener_port" {
+  description = "Puerto HTTP publicado por el ALB."
+  type        = number
+  default     = 80
+}
+
+variable "load_balancer_target_port" {
+  description = "Puerto de la aplicacion usado por el target group."
+  type        = number
+  default     = 3000
+}
+
+variable "load_balancer_health_check_path" {
+  description = "Ruta HTTP usada por el health check del target group."
+  type        = string
+  default     = "/healthz"
+}
+
+variable "load_balancer_health_check_matcher" {
+  description = "Codigos HTTP considerados exitosos por el target group."
+  type        = string
+  default     = "200"
+}
+
+variable "enable_compute_group" {
+  description = "Activa el Launch Template y el Auto Scaling Group."
+  type        = bool
+  default     = false
+}
+
+variable "autoscaling_instance_type" {
+  description = "Tipo de instancia para el Launch Template del ASG."
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "autoscaling_ami_id" {
+  description = "AMI opcional para el ASG. Si es null se resuelve desde SSM."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "autoscaling_root_volume_size" {
+  description = "Tamano del volumen raiz para las instancias del ASG."
+  type        = number
+  default     = 16
+}
+
+variable "autoscaling_root_volume_type" {
+  description = "Tipo de volumen raiz para las instancias del ASG."
+  type        = string
+  default     = "gp3"
+}
+
+variable "autoscaling_enable_detailed_monitoring" {
+  description = "Activa detailed monitoring para las instancias del ASG."
+  type        = bool
+  default     = false
+}
+
+variable "autoscaling_nodejs_major_version" {
+  description = "Version mayor de Node.js que se instala en las instancias del ASG."
+  type        = number
+  default     = 20
+}
+
+variable "autoscaling_app_base_dir" {
+  description = "Directorio base donde se despliega la app en las instancias del ASG."
+  type        = string
+  default     = "/opt/phase4-app"
+}
+
+variable "autoscaling_app_port" {
+  description = "Puerto local donde escuchara la app en las instancias del ASG."
+  type        = number
+  default     = 3000
+}
+
+variable "autoscaling_service_name" {
+  description = "Nombre del servicio systemd usado por la app en las instancias del ASG."
+  type        = string
+  default     = "phase4-smoke-app"
+}
+
+variable "autoscaling_artifact_prefix" {
+  description = "Prefijo S3 donde se publican los artefactos que consumira el ASG."
+  type        = string
+  default     = "phase4-smoke-app"
+}
+
+variable "autoscaling_desired_capacity" {
+  description = "Cantidad deseada de instancias en el ASG."
+  type        = number
+  default     = 1
+}
+
+variable "autoscaling_min_size" {
+  description = "Cantidad minima de instancias en el ASG."
+  type        = number
+  default     = 1
+}
+
+variable "autoscaling_max_size" {
+  description = "Cantidad maxima de instancias en el ASG."
+  type        = number
+  default     = 2
+}
+
+variable "autoscaling_health_check_grace_period" {
+  description = "Segundos de gracia antes de evaluar health checks del ASG."
+  type        = number
+  default     = 180
+}

@@ -1,0 +1,83 @@
+#!/bin/bash
+set -euxo pipefail
+
+retry() {
+  local attempts=0
+  local max_attempts=12
+  local delay=10
+
+  until "$@"; do
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge "$max_attempts" ]; then
+      echo "Comando fallo tras $${max_attempts} intentos: $*" >&2
+      return 1
+    fi
+    sleep "$delay"
+  done
+}
+
+dnf update -y
+dnf install -y awscli curl gcc-c++ git jq make python3 tar
+
+curl -fsSL "https://rpm.nodesource.com/setup_${nodejs_major_version}.x" | bash -
+dnf install -y nodejs
+
+systemctl enable amazon-ssm-agent
+systemctl restart amazon-ssm-agent
+
+mkdir -p "${app_base_dir}/current" "${app_base_dir}/shared"
+chown -R ec2-user:ec2-user "${app_base_dir}"
+
+cat > /usr/local/bin/phase4-fetch-secret <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+  echo "Uso: phase4-fetch-secret <region> <secret-name>" >&2
+  exit 1
+fi
+
+aws secretsmanager get-secret-value \
+  --region "$1" \
+  --secret-id "$2" \
+  --query SecretString \
+  --output text
+EOF
+
+chmod +x /usr/local/bin/phase4-fetch-secret
+
+retry aws s3 cp "s3://${artifact_bucket_name}/${artifact_prefix}/package.json" "${app_base_dir}/current/package.json" --region "${aws_region}"
+retry aws s3 cp "s3://${artifact_bucket_name}/${artifact_prefix}/server.js" "${app_base_dir}/current/server.js" --region "${aws_region}"
+
+cat > "${app_base_dir}/current/.env" <<EOF
+PORT=${app_port}
+NODE_ENV=development
+AWS_REGION=${aws_region}
+PHASE4_AURORA_SECRET_NAME=${database_secret_name}
+EOF
+
+chown -R ec2-user:ec2-user "${app_base_dir}/current"
+
+runuser -u ec2-user -- bash -lc "cd '${app_base_dir}/current' && npm install --omit=dev"
+
+cat > /etc/systemd/system/${app_service_name}.service <<EOF
+[Unit]
+Description=Smoke app de validacion para balanceo y escalado
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=${app_base_dir}/current
+EnvironmentFile=${app_base_dir}/current/.env
+ExecStart=/usr/bin/node ${app_base_dir}/current/server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now ${app_service_name}

@@ -109,3 +109,23 @@ output "test_instance_ssm_start_session_command" {
   description = "Comando sugerido para entrar por Session Manager a la EC2 de prueba."
   value       = module.compute.ssm_start_session_command
 }
+
+output "alb_dns_name" {
+  description = "DNS publico del Application Load Balancer."
+  value       = module.edge.alb_dns_name
+}
+
+output "alb_target_group_arn" {
+  description = "ARN del target group asociado al ALB."
+  value       = module.edge.target_group_arn
+}
+
+output "launch_template_id" {
+  description = "ID del Launch Template usado por el Auto Scaling Group."
+  value       = module.compute_group.launch_template_id
+}
+
+output "autoscaling_group_name" {
+  description = "Nombre del Auto Scaling Group de la aplicacion."
+  value       = module.compute_group.autoscaling_group_name
+}

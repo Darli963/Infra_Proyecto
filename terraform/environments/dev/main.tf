@@ -14,6 +14,7 @@ locals {
   database_secret_name          = var.database_mode == "express" ? data.aws_secretsmanager_secret.express[0].name : module.database[0].secret_name
   database_secret_arn           = var.database_mode == "express" ? data.aws_secretsmanager_secret.express[0].arn : module.database[0].secret_arn
   database_db_subnet_group_name = var.database_mode == "express" ? null : module.database[0].db_subnet_group_name
+  smoke_app_source_dir          = "${path.root}/../../../ansible/files/phase4-smoke-app"
 }
 
 data "aws_rds_cluster" "express" {
@@ -56,6 +57,22 @@ module "storage" {
       Tier = "storage"
     }
   )
+}
+
+resource "aws_s3_object" "smoke_app_package" {
+  bucket       = module.storage.bucket_id
+  key          = "phase4-smoke-app/package.json"
+  source       = "${local.smoke_app_source_dir}/package.json"
+  etag         = filemd5("${local.smoke_app_source_dir}/package.json")
+  content_type = "application/json"
+}
+
+resource "aws_s3_object" "smoke_app_server" {
+  bucket       = module.storage.bucket_id
+  key          = "phase4-smoke-app/server.js"
+  source       = "${local.smoke_app_source_dir}/server.js"
+  etag         = filemd5("${local.smoke_app_source_dir}/server.js")
+  content_type = "application/javascript"
 }
 
 module "database" {
@@ -119,6 +136,62 @@ module "compute" {
   artifact_bucket_arn        = module.storage.bucket_arn
   db_connect_resource_arns   = var.db_connect_resource_arns
   tags                       = local.common_tags
+}
+
+module "edge" {
+  source = "../../modules/edge"
+
+  enabled                    = var.enable_load_balancer
+  name                       = "${local.name_prefix}-app"
+  vpc_id                     = module.networking.vpc_id
+  public_subnet_ids          = module.networking.public_subnet_ids
+  security_group_id          = module.security_base.security_group_ids.alb
+  listener_port              = var.load_balancer_listener_port
+  target_port                = var.load_balancer_target_port
+  health_check_path          = var.load_balancer_health_check_path
+  health_check_matcher       = var.load_balancer_health_check_matcher
+  attach_test_instance       = var.enable_test_instance
+  target_instance_id         = module.compute.instance_id
+  enable_deletion_protection = false
+  tags                       = local.common_tags
+}
+
+module "compute_group" {
+  source = "../../modules/compute_group"
+
+  enabled                    = var.enable_compute_group
+  name                       = "${local.name_prefix}-app"
+  private_subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids         = [module.security_base.security_group_ids.ec2]
+  instance_profile_name      = module.security_base.ec2_instance_profile_name
+  instance_role_name         = module.security_base.ec2_iam_role_name
+  instance_type              = var.autoscaling_instance_type
+  ami_id                     = var.autoscaling_ami_id
+  root_volume_size           = var.autoscaling_root_volume_size
+  root_volume_type           = var.autoscaling_root_volume_type
+  enable_detailed_monitoring = var.autoscaling_enable_detailed_monitoring
+  nodejs_major_version       = var.autoscaling_nodejs_major_version
+  app_base_dir               = var.autoscaling_app_base_dir
+  app_port                   = var.autoscaling_app_port
+  app_service_name           = var.autoscaling_service_name
+  app_artifact_prefix        = var.autoscaling_artifact_prefix
+  artifact_bucket_name       = module.storage.bucket_id
+  artifact_bucket_arn        = module.storage.bucket_arn
+  database_secret_name       = local.database_secret_name
+  aws_region                 = var.aws_region
+  secret_arns                = concat([local.database_secret_arn], var.enable_redis ? [module.cache.secret_arn] : [])
+  db_connect_resource_arns   = var.db_connect_resource_arns
+  desired_capacity           = var.autoscaling_desired_capacity
+  min_size                   = var.autoscaling_min_size
+  max_size                   = var.autoscaling_max_size
+  health_check_grace_period  = var.autoscaling_health_check_grace_period
+  target_group_arns          = var.enable_load_balancer ? [module.edge.target_group_arn] : []
+  tags                       = local.common_tags
+
+  depends_on = [
+    aws_s3_object.smoke_app_package,
+    aws_s3_object.smoke_app_server
+  ]
 }
 
 module "networking" {
