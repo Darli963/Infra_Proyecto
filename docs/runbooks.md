@@ -31,8 +31,10 @@ terraform apply -var-file="dev.tfvars"
 Si todo esta alineado con el entorno real de `Ruta A`, el resultado esperado es:
 
 ```bash
-No changes. Your infrastructure matches the configuration.
+Apply complete! Resources: X added, Y changed, Z destroyed.
 ```
+
+En una segunda ejecucion (o con `terraform plan`) ya no deberias ver cambios inesperados.
 
 ## Obtener datos operativos
 
@@ -62,10 +64,11 @@ Dentro de la instancia:
 
 ```bash
 node -v
+which phase4-fetch-secret
 phase4-fetch-secret us-east-1 "<nombre-del-secreto-de-aurora>"
 ```
 
-## Bootstrap opcional con Ansible
+## Bootstrap con Ansible
 
 Desde tu maquina local:
 
@@ -73,6 +76,8 @@ Desde tu maquina local:
 export AWS_REGION=us-east-1
 ansible-playbook -i ansible/inventory/aws_ec2.yml ansible/playbooks/bootstrap.yml
 ```
+
+El `bootstrap.yml` instala paquetes base, prepara la estructura del servidor, asegura `amazon-ssm-agent`, instala Node.js y deja listo el rol de monitoreo si luego se activa `phase4_monitoring_enabled=true`.
 
 ## Desplegar la smoke app de validacion
 
@@ -83,6 +88,8 @@ ansible-playbook \
   ansible/playbooks/deploy_app.yml \
   -e phase4_aurora_secret_name="$(cd terraform/environments/dev && terraform output -raw aurora_secret_name)"
 ```
+
+El `deploy_app.yml` copia el artefacto, recrea el release activo, escribe el `.env`, instala dependencias, actualiza el servicio `systemd` y valida `http://127.0.0.1:3000/healthz` al terminar.
 
 Si no tienes `ansible-playbook` instalado localmente, puedes validar la instancia con `aws ssm send-command` ejecutando los mismos chequeos de `node`, servicio y `curl` desde `Systems Manager`.
 

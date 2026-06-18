@@ -1,0 +1,43 @@
+- name: Instalar paquetes base requeridos
+  ansible.builtin.package:
+    name: "{{ phase4_base_packages }}"
+    state: present
+
+- name: Instalar helper para consultar secretos
+  ansible.builtin.copy:
+    dest: /usr/local/bin/phase4-fetch-secret
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      if [ "$#" -ne 2 ]; then
+        echo "Uso: phase4-fetch-secret <region> <secret-name>" >&2
+        exit 1
+      fi
+
+      aws secretsmanager get-secret-value \
+        --region "$1" \
+        --secret-id "$2" \
+        --query SecretString \
+        --output text
+
+- name: Asegurar que Session Manager quede habilitado
+  ansible.builtin.service:
+    name: amazon-ssm-agent
+    state: started
+    enabled: true
+
+- name: Crear estructura base para la aplicacion
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ phase4_app_user }}"
+    group: "{{ phase4_app_group }}"
+    mode: "0755"
+  loop:
+    - "{{ phase4_app_root }}"
+    - "{{ phase4_app_root }}/bin"
+    - "{{ phase4_app_root }}/releases"

@@ -1,70 +1,7 @@
-- name: Desplegar smoke app de validacion para la Fase 4
+- name: Desplegar la aplicacion Node.js
   hosts: phase4_test
   become: true
   gather_facts: true
 
-  pre_tasks:
-    - name: Validar que se definio el secreto de Aurora
-      ansible.builtin.assert:
-        that:
-          - phase4_aurora_secret_name | length > 0
-        fail_msg: "Debes definir `phase4_aurora_secret_name` para comprobar la conexion con Aurora."
-
-  tasks:
-    - name: Copiar smoke app de validacion
-      ansible.builtin.copy:
-        src: ../files/phase4-smoke-app/
-        dest: "{{ phase4_app_dir }}/"
-        owner: ec2-user
-        group: ec2-user
-        mode: preserve
-
-    - name: Crear archivo de entorno para la smoke app
-      ansible.builtin.copy:
-        dest: "{{ phase4_app_dir }}/.env"
-        owner: ec2-user
-        group: ec2-user
-        mode: "0640"
-        content: |
-          PORT={{ phase4_app_port }}
-          NODE_ENV={{ phase4_node_env }}
-          AWS_REGION={{ ansible_aws_ssm_region }}
-          PHASE4_AURORA_SECRET_NAME={{ phase4_aurora_secret_name }}
-
-    - name: Instalar dependencias de la smoke app
-      ansible.builtin.command: npm install --omit=dev
-      args:
-        chdir: "{{ phase4_app_dir }}"
-      become_user: ec2-user
-
-    - name: Crear servicio systemd para la smoke app
-      ansible.builtin.copy:
-        dest: "/etc/systemd/system/{{ phase4_service_name }}.service"
-        mode: "0644"
-        content: |
-          [Unit]
-          Description=Smoke app de validacion para la Fase 4
-          After=network-online.target
-          Wants=network-online.target
-
-          [Service]
-          Type=simple
-          User=ec2-user
-          WorkingDirectory={{ phase4_app_dir }}
-          EnvironmentFile={{ phase4_app_dir }}/.env
-          ExecStart=/usr/bin/node {{ phase4_app_dir }}/server.js
-          Restart=always
-          RestartSec=5
-
-          [Install]
-          WantedBy=multi-user.target
-
-    - name: Recargar systemd
-      ansible.builtin.systemd_service:
-        daemon_reload: true
-
-    - name: Habilitar e iniciar smoke app
-      ansible.builtin.service:
-        name: "{{ phase4_service_name }}"
-        state: restarted
-        enabled: true
+  roles:
+    - role: app
