@@ -4,7 +4,7 @@ regions:
 
 filters:
   instance-state-name: running
-  tag:Phase: phase4
+  tag:Project: infra-proyecto
 
 hostnames:
   - instance-id
@@ -18,3 +18,5 @@ keyed_groups:
 
 groups:
   phase4_test: tags.Phase is defined and tags.Phase == 'phase4'
+  deploy_dev: tags.Environment is defined and tags.Environment == 'dev' and tags.Phase is defined and tags.Phase == 'phase4'
+  deploy_prod: tags.Environment is defined and tags.Environment == 'prod' and ((tags.Role is defined and tags.Role == 'app-server') or (tags.Phase is defined and tags.Phase == 'phase4'))

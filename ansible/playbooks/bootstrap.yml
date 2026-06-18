@@ -1,5 +1,5 @@
 - name: Bootstrap del servidor de aplicacion
-  hosts: phase4_test
+  hosts: "{{ target_hosts | default('phase4_test') }}"
   become: true
   gather_facts: true
 
