@@ -1,0 +1,17 @@
+[Unit]
+Description=Smoke app de validacion para la Fase 4
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ phase4_app_user }}
+Group={{ phase4_app_group }}
+WorkingDirectory={{ phase4_app_dir }}
+EnvironmentFile={{ phase4_app_dir }}/.env
+ExecStart=/usr/bin/node {{ phase4_app_dir }}/server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

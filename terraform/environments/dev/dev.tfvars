@@ -27,8 +27,8 @@ bucket_force_destroy      = false
 
 # Database
 database_mode                      = "express"
-external_aurora_cluster_identifier = "infra-proyecto-dev-aurora-express"
-external_aurora_secret_name        = "infra-proyecto/dev/aurora"
+external_aurora_cluster_identifier = "database-1"
+external_aurora_secret_name        = "infra-proyecto/dev/aurora-new"
 db_name                            = "postgres"
 db_master_username                 = "postgres"
 db_engine                          = "aurora-postgresql"
