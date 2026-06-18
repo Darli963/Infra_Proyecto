@@ -79,7 +79,7 @@ jobs:
           sudo apt-get install -y curl unzip
 
           python3 -m pip install --upgrade pip
-          python3 -m pip install ansible boto3 botocore
+          python3 -m pip install ansible "boto3>=1.35.0" "botocore>=1.35.0"
 
           ansible-galaxy collection install -r ansible/requirements.yml
 
@@ -126,6 +126,9 @@ jobs:
         run: |
           set -euo pipefail
 
+          export ANSIBLE_AWS_SSM_BUCKET_NAME
+          ANSIBLE_AWS_SSM_BUCKET_NAME="$(terraform -chdir=terraform/environments/dev output -raw s3_bucket_name)"
+
           ansible-playbook \
             -i ansible/inventory/aws_ec2.yml \
             ansible/playbooks/bootstrap.yml \
@@ -137,6 +140,8 @@ jobs:
         run: |
           set -euo pipefail
 
+          export ANSIBLE_AWS_SSM_BUCKET_NAME
+          ANSIBLE_AWS_SSM_BUCKET_NAME="$(terraform -chdir=terraform/environments/dev output -raw s3_bucket_name)"
           aurora_secret_name="$(terraform -chdir=terraform/environments/dev output -raw aurora_secret_name)"
 
           ansible-playbook \
