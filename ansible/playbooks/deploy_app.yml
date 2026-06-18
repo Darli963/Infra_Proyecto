@@ -1,5 +1,5 @@
 - name: Desplegar la aplicacion Node.js
-  hosts: phase4_test
+  hosts: "{{ target_hosts | default('phase4_test') }}"
   become: true
   gather_facts: true
 
