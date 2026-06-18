@@ -15,7 +15,7 @@ single_nat_gateway      = true
 # Security Groups
 alb_ingress_cidrs              = ["0.0.0.0/0"]
 alb_ingress_ports              = [80, 443]
-ec2_ingress_ports              = [80]
+ec2_ingress_ports              = [3000]
 aurora_port                    = 5432
 redis_port                     = 6379
 external_database_egress_cidrs = ["0.0.0.0/0"]
@@ -60,6 +60,28 @@ test_instance_nodejs_major_version       = 20
 test_instance_app_base_dir               = "/opt/phase4-app"
 test_instance_app_port                   = 3000
 db_connect_resource_arns                 = ["arn:aws:rds-db:us-east-1:784055307801:dbuser:*/*"]
+
+# Balanceo y escalado
+enable_load_balancer                   = false
+load_balancer_listener_port            = 80
+load_balancer_target_port              = 3000
+load_balancer_health_check_path        = "/healthz"
+load_balancer_health_check_matcher     = "200"
+enable_compute_group                   = false
+autoscaling_instance_type              = "t3.micro"
+autoscaling_ami_id                     = null
+autoscaling_root_volume_size           = 16
+autoscaling_root_volume_type           = "gp3"
+autoscaling_enable_detailed_monitoring = false
+autoscaling_nodejs_major_version       = 20
+autoscaling_app_base_dir               = "/opt/phase4-app"
+autoscaling_app_port                   = 3000
+autoscaling_service_name               = "phase4-smoke-app"
+autoscaling_artifact_prefix            = "phase4-smoke-app"
+autoscaling_desired_capacity           = 1
+autoscaling_min_size                   = 1
+autoscaling_max_size                   = 2
+autoscaling_health_check_grace_period  = 180
 
 # Tags
 common_tags = {
