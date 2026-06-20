@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 dnf update -y
-dnf install -y curl gcc-c++ git jq make python3 tar
+dnf install -y curl-minimal gcc-c++ git jq make python3 tar
 
 curl -fsSL "https://rpm.nodesource.com/setup_${nodejs_major_version}.x" | bash -
 dnf install -y nodejs
