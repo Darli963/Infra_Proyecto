@@ -18,7 +18,7 @@ phase4_node_major_version: 20
 phase4_node_setup_url: "https://rpm.nodesource.com/setup_{{ phase4_node_major_version }}.x"
 phase4_base_packages:
   - awscli
-  - curl
+  - curl-minimal
   - gcc-c++
   - git
   - jq
