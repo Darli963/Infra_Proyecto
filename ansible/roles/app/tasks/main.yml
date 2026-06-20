@@ -48,6 +48,21 @@
   register: npm_install
   changed_when: "'up to date' not in npm_install.stdout"
 
+- name: Inspeccionar el path current antes de enlazar
+  ansible.builtin.stat:
+    path: "{{ phase4_app_dir }}"
+    follow: false
+  register: current_path
+
+- name: Eliminar current si existe como directorio real
+  ansible.builtin.file:
+    path: "{{ phase4_app_dir }}"
+    state: absent
+  when:
+    - current_path.stat.exists | default(false)
+    - current_path.stat.isdir | default(false)
+    - not current_path.stat.islnk | default(false)
+
 - name: Actualizar el enlace simbolico current
   ansible.builtin.file:
     src: "{{ phase4_app_release_dir }}"
