@@ -43,10 +43,8 @@
     recurse: true
 
 - name: Instalar dependencias de la aplicacion
-  ansible.builtin.command: npm install --omit=dev
-  args:
-    chdir: "{{ phase4_app_release_dir }}"
-  become_user: "{{ phase4_app_user }}"
+  ansible.builtin.shell: |
+    runuser -u {{ phase4_app_user }} -- bash -lc 'cd {{ phase4_app_release_dir }} && npm install --omit=dev'
   register: npm_install
   changed_when: "'up to date' not in npm_install.stdout"
 
