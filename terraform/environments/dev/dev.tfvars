@@ -13,12 +13,13 @@ map_public_ip_on_launch = true
 single_nat_gateway      = true
 
 # Security Groups
-alb_ingress_cidrs              = ["0.0.0.0/0"]
-alb_ingress_ports              = [80, 443]
-ec2_ingress_ports              = [3000]
-aurora_port                    = 5432
-redis_port                     = 6379
-external_database_egress_cidrs = ["0.0.0.0/0"]
+alb_ingress_cidrs                      = ["0.0.0.0/0"]
+alb_ingress_ports                      = [80]
+alb_ingress_use_cloudfront_prefix_list = true
+ec2_ingress_ports                      = [3000]
+aurora_port                            = 5432
+redis_port                             = 6379
+external_database_egress_cidrs         = ["0.0.0.0/0"]
 
 # Storage
 app_bucket_name           = "infra-proyecto-dev-storage-phase3-example"
@@ -62,7 +63,7 @@ test_instance_app_port                   = 3000
 db_connect_resource_arns                 = ["arn:aws:rds-db:us-east-1:784055307801:dbuser:*/*"]
 
 # Balanceo y escalado
-enable_load_balancer                   = false
+enable_load_balancer                   = true
 load_balancer_listener_port            = 80
 load_balancer_target_port              = 3000
 load_balancer_health_check_path        = "/healthz"
@@ -82,6 +83,15 @@ autoscaling_desired_capacity           = 1
 autoscaling_min_size                   = 1
 autoscaling_max_size                   = 2
 autoscaling_health_check_grace_period  = 180
+
+# Perimetro publico
+enable_perimeter                 = true
+perimeter_origin_protocol_policy = "http-only"
+perimeter_custom_domain_name     = null
+perimeter_enable_acm_certificate = false
+perimeter_manage_route53_records = false
+perimeter_route53_zone_id        = null
+perimeter_price_class            = "PriceClass_100"
 
 # Observabilidad
 observability_sns_email_endpoint    = null

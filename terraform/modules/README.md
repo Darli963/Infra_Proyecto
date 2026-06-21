@@ -10,3 +10,4 @@ Modulos previstos:
 - `database`
 - `storage`
 - `observability`
+- `perimeter`

@@ -27,6 +27,12 @@ locals {
   ])
 }
 
+data "aws_ec2_managed_prefix_list" "cloudfront_origin_facing" {
+  count = var.alb_ingress_use_cloudfront_prefix_list ? 1 : 0
+
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 resource "aws_iam_role" "ec2_ssm" {
   name = "${var.name}-ec2-ssm-role"
 
@@ -81,13 +87,24 @@ resource "aws_security_group" "alb" {
   vpc_id      = var.vpc_id
 
   dynamic "ingress" {
-    for_each = local.alb_ingress_rules
+    for_each = var.alb_ingress_use_cloudfront_prefix_list ? [] : local.alb_ingress_rules
     content {
       description = "Internet hacia ALB puerto ${ingress.value.port}"
       from_port   = ingress.value.port
       to_port     = ingress.value.port
       protocol    = "tcp"
       cidr_blocks = [ingress.value.cidr]
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = var.alb_ingress_use_cloudfront_prefix_list ? toset(var.alb_ingress_ports) : []
+    content {
+      description     = "CloudFront origin-facing hacia ALB puerto ${ingress.value}"
+      from_port       = ingress.value
+      to_port         = ingress.value
+      protocol        = "tcp"
+      prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront_origin_facing[0].id]
     }
   }
 

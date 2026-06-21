@@ -13,11 +13,12 @@ map_public_ip_on_launch = false
 single_nat_gateway      = false
 
 # Security Groups
-alb_ingress_cidrs = ["0.0.0.0/0"]
-alb_ingress_ports = [80, 443]
-ec2_ingress_ports = [80]
-aurora_port       = 3306
-redis_port        = 6379
+alb_ingress_cidrs                      = ["0.0.0.0/0"]
+alb_ingress_ports                      = [80, 443]
+alb_ingress_use_cloudfront_prefix_list = false
+ec2_ingress_ports                      = [80]
+aurora_port                            = 3306
+redis_port                             = 6379
 
 # Storage
 app_bucket_name           = "infra-proyecto-prod-storage-phase3-example"
@@ -44,6 +45,18 @@ redis_node_type          = "cache.t4g.small"
 redis_engine_version     = "7.0"
 redis_num_cache_clusters = 2
 redis_secret_name        = "infra-proyecto/prod/redis"
+
+# Perimetro publico
+enable_perimeter                 = false
+perimeter_origin_domain_name     = null
+perimeter_origin_http_port       = 80
+perimeter_origin_https_port      = 443
+perimeter_origin_protocol_policy = "http-only"
+perimeter_custom_domain_name     = null
+perimeter_enable_acm_certificate = false
+perimeter_manage_route53_records = false
+perimeter_route53_zone_id        = null
+perimeter_price_class            = "PriceClass_100"
 
 # Observabilidad
 observability_sns_email_endpoint    = null

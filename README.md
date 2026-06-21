@@ -243,6 +243,13 @@ Variables especialmente importantes:
 - `external_aurora_secret_name`: secreto de AWS Secrets Manager que usa la app en `dev`.
 - `enable_test_instance`: define si se crea la EC2 de validación.
 - `observability_sns_email_endpoint`: correo para confirmar la suscripción SNS si quieres cerrar Fase 8.
+- `enable_load_balancer`: en `dev` debe estar activo para publicar el origen detrás de CloudFront.
+- `enable_perimeter`: activa `CloudFront` + `WAF` para la Fase 9.
+- `alb_ingress_use_cloudfront_prefix_list`: restringe el `ALB` para aceptar tráfico solo desde CloudFront.
+- `perimeter_custom_domain_name`: dominio propio opcional para publicar el perímetro.
+- `perimeter_enable_acm_certificate`: solicita un certificado `ACM` en `us-east-1`.
+- `perimeter_manage_route53_records`: crea registros en `Route 53` si existe una hosted zone real.
+- `perimeter_route53_zone_id`: hosted zone ID donde se publicará el dominio.
 
 ## Qué necesitas tener creado en AWS
 
@@ -252,7 +259,8 @@ Antes del primer despliegue desde una máquina local o desde GitHub Actions, ase
 - tabla `DynamoDB` para el locking del estado
 - credenciales AWS válidas o federación `OIDC` si usas GitHub Actions
 - en `dev`, el cluster Aurora externo y su secreto si trabajas en modo `express`
-- permisos suficientes para crear VPC, EC2, IAM, S3, CloudWatch y SNS
+- permisos suficientes para crear VPC, EC2, IAM, S3, CloudWatch, SNS, CloudFront, WAFv2, ACM y, si aplica, Route 53
+- si quieres dominio propio en Fase 9, una hosted zone pública real en `Route 53`
 
 ## Bootstrap mínimo del repositorio
 
@@ -420,6 +428,131 @@ Mantelo unos minutos, confirma la transicion de la alarma en CloudWatch y luego 
 ```bash
 pkill -f 'yes > /dev/null'
 ```
+
+## Perimetro minimo - Fase 9
+
+La Fase 9 agrega una capa pública mínima y realista sobre la base ya operativa de Fase 8:
+
+- `CloudFront` como punto de entrada HTTPS
+- `WAFv2` asociado a CloudFront con reglas administradas de reputación, reglas comunes y entradas maliciosas conocidas
+- integración opcional con `ACM` en `us-east-1` para dominio propio
+- integración opcional con `Route 53` cuando exista una hosted zone real
+- endurecimiento del `ALB` en `dev` para aceptar tráfico solo desde el managed prefix list origin-facing de CloudFront
+
+### Diseño aplicado
+
+- en `dev`, el origen realista es el `ALB` del módulo `edge`
+- en `dev`, la app queda publicable por HTTPS aunque no exista dominio propio, usando el dominio `*.cloudfront.net`
+- `ACM` y `Route 53` quedan implementados de forma activable por variables; no se inventa un dominio si todavía no existe
+- en `prod`, la capa de perímetro queda preparada por variables, pero no se activa por defecto porque `prod` todavía no modela `compute`, `ASG` ni `ALB` para la app
+- `WAF` se asocia a `CloudFront` como opción principal porque protege el punto de entrada público real
+
+### Variables nuevas
+
+Revisa estas variables en ambos ambientes:
+
+- `enable_perimeter`: activa o no el módulo de perímetro
+- `perimeter_origin_protocol_policy`: política entre CloudFront y el origen; hoy queda en `http-only` para el flujo mínimo realista del repo
+- `perimeter_custom_domain_name`: dominio propio opcional
+- `perimeter_enable_acm_certificate`: solicita el certificado viewer en `ACM`
+- `perimeter_manage_route53_records`: habilita creación de registros DNS y validación DNS en `Route 53`
+- `perimeter_route53_zone_id`: hosted zone ID de `Route 53`
+- `perimeter_price_class`: clase de precio de CloudFront
+- `perimeter_origin_domain_name`: solo en `prod`, DNS del origen público real cuando exista
+
+### Estado por ambiente
+
+- `dev`: queda listo para exponer la smoke app por `CloudFront` con `HTTPS`, `WAF` y `ALB` restringido a CloudFront
+- `dev`: el dominio propio es opcional; si no defines `perimeter_custom_domain_name`, el endpoint válido será `terraform output -raw perimeter_https_endpoint`
+- `prod`: mientras no exista un origen público real, deja `enable_perimeter = false` y documenta el dominio/origen futuro en `prod.tfvars`
+- `prod`: si más adelante existe un `ALB` o endpoint público estable, basta con completar `perimeter_origin_domain_name` y, si aplica, el dominio propio
+
+### Prerrequisitos para dominio propio
+
+Para activar dominio real con `ACM` + `Route 53` necesitas:
+
+- `perimeter_custom_domain_name` con un FQDN real, por ejemplo `app.midominio.com`
+- `perimeter_enable_acm_certificate = true`
+- `perimeter_manage_route53_records = true`
+- `perimeter_route53_zone_id` apuntando a la hosted zone pública correcta
+
+Si alguno de esos datos no existe todavía:
+
+- deja `perimeter_custom_domain_name = null`
+- deja `perimeter_enable_acm_certificate = false`
+- deja `perimeter_manage_route53_records = false`
+- valida la Fase 9 usando el dominio `cloudfront.net`
+
+### Validacion manual
+
+1. Aplica Terraform en `dev`:
+
+```bash
+cd terraform/environments/dev
+terraform init \
+  -backend-config="bucket=$TF_STATE_BUCKET" \
+  -backend-config="key=dev/terraform.tfstate" \
+  -backend-config="region=$AWS_REGION" \
+  -backend-config="dynamodb_table=$TF_LOCK_TABLE" \
+  -backend-config="encrypt=true"
+terraform apply -var-file="dev.tfvars"
+```
+
+2. Ejecuta `bootstrap.yml` y `deploy_app.yml` para asegurar que la app responda detrás del `ALB`:
+
+```bash
+export AWS_REGION=us-east-1
+ansible-playbook -i ansible/inventory/aws_ec2.yml ansible/playbooks/bootstrap.yml
+ansible-playbook \
+  -i ansible/inventory/aws_ec2.yml \
+  ansible/playbooks/deploy_app.yml \
+  -e phase4_aurora_secret_name="$(cd terraform/environments/dev && terraform output -raw aurora_secret_name)"
+```
+
+3. Obtén el endpoint HTTPS:
+
+```bash
+cd terraform/environments/dev
+terraform output perimeter_https_endpoint
+terraform output perimeter_cloudfront_domain_name
+terraform output perimeter_web_acl_arn
+```
+
+4. Valida respuesta pública por HTTPS:
+
+```bash
+curl -I "$(terraform output -raw perimeter_https_endpoint)"
+curl "$(terraform output -raw perimeter_https_endpoint)/healthz"
+curl "$(terraform output -raw perimeter_https_endpoint)/db-check"
+```
+
+5. Verifica endurecimiento del origen:
+
+- el `ALB` debe existir, pero su `Security Group` ya no debe aceptar `0.0.0.0/0` si `alb_ingress_use_cloudfront_prefix_list = true`
+- el tráfico público válido debe entrar por CloudFront, no directamente por el `ALB`
+
+6. Verifica el `WAF`:
+
+- confirma en la consola de `WAF` que el `Web ACL` esté asociado a la distribución CloudFront
+- revisa métricas de reglas administradas y requests permitidos/bloqueados
+
+7. Si activaste dominio propio:
+
+- verifica que `terraform output perimeter_custom_domain_status` no quede en `not_requested`
+- espera la propagación de CloudFront y DNS
+- valida `https://<tu-dominio>` en lugar del dominio `cloudfront.net`
+
+### Limitaciones reales documentadas
+
+- `prod` todavía no tiene un origen público modelado dentro de Terraform para la app; por eso la Fase 9 en `prod` queda preparada pero no activada por defecto
+- el flujo mínimo actual termina TLS en `CloudFront`; el origen `ALB` sigue en `HTTP` porque el repositorio aún no dispone de un dominio/certificado regional para cerrar `HTTPS` extremo a extremo
+- `deploy_prod.yml` sigue condicionado a la existencia de hosts administrados por `SSM`; esta fase no modifica esa limitación
+
+### Alcance deliberadamente fuera de esta fase
+
+- `API Gateway + VPC Link` no es necesario en esta fase porque ya existe un camino más directo y suficiente con `CloudFront -> ALB`
+- `Cognito` no es necesario todavía porque la fase pide perímetro mínimo profesional, no autenticación de usuarios finales
+- la autenticación o autorización de aplicación puede evaluarse en una fase posterior cuando exista un frontend o requerimiento real de identidad
 
 ## Orden recomendado
 

@@ -32,16 +32,17 @@ data "aws_secretsmanager_secret" "express" {
 module "security_base" {
   source = "../../modules/security_base"
 
-  name                           = local.name_prefix
-  vpc_id                         = module.networking.vpc_id
-  vpc_cidr                       = var.vpc_cidr
-  alb_ingress_cidrs              = var.alb_ingress_cidrs
-  alb_ingress_ports              = var.alb_ingress_ports
-  ec2_ingress_ports              = var.ec2_ingress_ports
-  aurora_port                    = var.aurora_port
-  external_database_egress_cidrs = var.external_database_egress_cidrs
-  redis_port                     = var.redis_port
-  tags                           = local.common_tags
+  name                                   = local.name_prefix
+  vpc_id                                 = module.networking.vpc_id
+  vpc_cidr                               = var.vpc_cidr
+  alb_ingress_cidrs                      = var.alb_ingress_cidrs
+  alb_ingress_ports                      = var.alb_ingress_ports
+  alb_ingress_use_cloudfront_prefix_list = var.alb_ingress_use_cloudfront_prefix_list
+  ec2_ingress_ports                      = var.ec2_ingress_ports
+  aurora_port                            = var.aurora_port
+  external_database_egress_cidrs         = var.external_database_egress_cidrs
+  redis_port                             = var.redis_port
+  tags                                   = local.common_tags
 }
 
 module "storage" {
@@ -192,6 +193,27 @@ module "compute_group" {
     aws_s3_object.smoke_app_package,
     aws_s3_object.smoke_app_server
   ]
+}
+
+module "perimeter" {
+  source = "../../modules/perimeter"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  enabled                = var.enable_perimeter && var.enable_load_balancer
+  name                   = "${local.name_prefix}-public"
+  origin_domain_name     = module.edge.alb_dns_name
+  origin_http_port       = var.load_balancer_listener_port
+  origin_protocol_policy = var.perimeter_origin_protocol_policy
+  custom_domain_name     = var.perimeter_custom_domain_name
+  enable_acm_certificate = var.perimeter_enable_acm_certificate
+  manage_route53_records = var.perimeter_manage_route53_records
+  route53_zone_id        = var.perimeter_route53_zone_id
+  price_class            = var.perimeter_price_class
+  tags                   = local.common_tags
 }
 
 module "observability" {

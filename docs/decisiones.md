@@ -69,3 +69,55 @@ Motivo:
 - la cuenta exige `Express configuration` para este escenario
 - evita forzar un cambio de motor o rediseñar la fase
 - mantiene la validacion enfocada en habitabilidad real de la app dentro de AWS
+
+## Fase 9 - Perimetro minimo profesional
+
+### 1. CloudFront como entrada publica principal
+
+La entrada pública se resuelve con `CloudFront` delante del origen HTTP realista que ya existe o puede existir en Terraform.
+
+Motivo:
+
+- aporta `HTTPS` administrado desde el borde
+- habilita integración nativa con `WAF`
+- evita introducir componentes innecesarios mientras el repositorio ya dispone de un camino natural con `ALB`
+
+### 2. WAF asociado a CloudFront
+
+La protección mínima se implementa con `WAFv2` sobre CloudFront, usando reglas administradas de AWS.
+
+Motivo:
+
+- protege el primer punto de entrada público
+- reduce mantenimiento operativo frente a reglas completamente custom
+- cubre reputación IP, patrones comunes y entradas maliciosas conocidas
+
+### 3. ACM y Route 53 solo cuando exista dominio real
+
+El código soporta `ACM` y `Route 53`, pero su activación depende de que exista un dominio real y una hosted zone pública.
+
+Motivo:
+
+- no inventa dominios inexistentes
+- permite validar la fase primero con el dominio `cloudfront.net`
+- deja el camino listo para dominio propio sin rehacer la arquitectura
+
+### 4. Dev operativo, prod preparado
+
+`dev` sí puede cerrar la fase con un origen realista porque ya cuenta con `EC2` y puede activar `ALB`. `prod` todavía no modela ese origen en Terraform.
+
+Motivo:
+
+- mantiene realismo respecto al estado actual del proyecto
+- evita prometer un flujo público en `prod` que todavía no existe
+- deja variables claras para activar el perímetro en `prod` cuando aparezca el origen público real
+
+### 5. Sin API Gateway ni Cognito en esta fase
+
+No se agrega `API Gateway + VPC Link` ni `Cognito` en esta iteración.
+
+Motivo:
+
+- `CloudFront -> ALB` ya resuelve el objetivo de perímetro mínimo
+- agregar gateway o identidad ahora aumentaría complejidad sin necesidad funcional demostrada
+- la autenticación de usuarios finales requiere un caso de uso más concreto que el alcance actual
