@@ -105,8 +105,6 @@ perimeter_enable_acm_certificate = false
 perimeter_manage_route53_records = false
 perimeter_route53_zone_id        = null
 perimeter_price_class            = "PriceClass_100"
-enable_regional_waf              = true
-
 # Observabilidad
 observability_sns_email_endpoint    = null
 observability_log_retention_in_days = 14
