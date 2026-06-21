@@ -81,3 +81,16 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_regional_waf" {
+  description = "Crea un WebACL WAFv2 REGIONAL y lo asocia al stage del API Gateway."
+  type        = bool
+  default     = false
+}
+
+variable "api_gateway_stage_arn" {
+  description = "ARN del stage del HTTP API Gateway al que se asociara el WAF regional."
+  type        = string
+  default     = null
+  nullable    = true
+}

@@ -47,3 +47,8 @@ output "https_endpoint" {
     null
   )
 }
+
+output "regional_web_acl_arn" {
+  description = "ARN del WebACL WAFv2 REGIONAL asociado al API Gateway."
+  value       = try(aws_wafv2_web_acl.regional[0].arn, null)
+}

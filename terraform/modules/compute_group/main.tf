@@ -51,7 +51,7 @@ resource "aws_iam_role_policy" "instance_runtime" {
             "secretsmanager:DescribeSecret",
             "secretsmanager:GetSecretValue"
           ]
-          Resource = var.secret_arns
+          Resource = [for arn in var.secret_arns : arn if arn != null]
         },
         {
           Sid    = "ListArtifactBucket"
