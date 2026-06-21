@@ -24,6 +24,8 @@ locals {
   )
 }
 
+data "aws_region" "current" {}
+
 data "aws_cloudfront_cache_policy" "caching_disabled" {
   provider = aws.us_east_1
   name     = "Managed-CachingDisabled"
@@ -336,6 +338,6 @@ resource "aws_wafv2_web_acl" "regional" {
 
 resource "aws_wafv2_web_acl_association" "api_gateway" {
   count        = var.enable_regional_waf ? 1 : 0
-  resource_arn = var.api_gateway_stage_arn
+  resource_arn = "arn:aws:apigateway:${data.aws_region.current.name}::/apis/${var.api_gateway_id}/stages/${var.api_gateway_stage_name}"
   web_acl_arn  = aws_wafv2_web_acl.regional[0].arn
 }

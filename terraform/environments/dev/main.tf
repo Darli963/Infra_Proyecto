@@ -243,7 +243,8 @@ module "perimeter" {
   route53_zone_id        = var.perimeter_route53_zone_id
   price_class            = var.perimeter_price_class
   enable_regional_waf    = var.enable_regional_waf
-  api_gateway_stage_arn  = var.enable_regional_waf ? module.api_gateway.stage_arn : null
+  api_gateway_id         = var.enable_regional_waf ? module.api_gateway.api_id : null
+  api_gateway_stage_name = var.enable_regional_waf ? module.api_gateway.stage_name : null
   tags                   = local.common_tags
 }
 
