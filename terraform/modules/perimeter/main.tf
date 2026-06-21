@@ -11,9 +11,11 @@ terraform {
 }
 
 locals {
-  custom_domain_requested = var.custom_domain_name != null && trimspace(var.custom_domain_name) != ""
-  request_certificate     = var.enabled && local.custom_domain_requested && var.enable_acm_certificate
-  route53_ready           = local.request_certificate && var.route53_zone_id != null && trimspace(var.route53_zone_id) != "" && var.manage_route53_records
+  custom_domain_name_normalized = var.custom_domain_name != null ? trimspace(var.custom_domain_name) : ""
+  route53_zone_id_normalized    = var.route53_zone_id != null ? trimspace(var.route53_zone_id) : ""
+  custom_domain_requested       = local.custom_domain_name_normalized != ""
+  request_certificate           = var.enabled && local.custom_domain_requested && var.enable_acm_certificate
+  route53_ready                 = local.request_certificate && local.route53_zone_id_normalized != "" && var.manage_route53_records
   common_tags = merge(
     {
       Module = "perimeter"
