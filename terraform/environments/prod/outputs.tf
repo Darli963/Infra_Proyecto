@@ -85,6 +85,41 @@ output "redis_secret_arn" {
   sensitive   = true
 }
 
+output "perimeter_cloudfront_distribution_id" {
+  description = "ID de la distribucion CloudFront del perimetro."
+  value       = module.perimeter.cloudfront_distribution_id
+}
+
+output "perimeter_cloudfront_domain_name" {
+  description = "Dominio generado por CloudFront para el perimetro."
+  value       = module.perimeter.cloudfront_domain_name
+}
+
+output "perimeter_https_endpoint" {
+  description = "Endpoint HTTPS recomendado para validar el perimetro."
+  value       = module.perimeter.https_endpoint
+}
+
+output "perimeter_web_acl_arn" {
+  description = "ARN del Web ACL que protege CloudFront."
+  value       = module.perimeter.web_acl_arn
+}
+
+output "perimeter_acm_certificate_arn" {
+  description = "ARN del certificado ACM del dominio personalizado, si fue solicitado."
+  value       = module.perimeter.acm_certificate_arn
+}
+
+output "perimeter_custom_domain_status" {
+  description = "Estado del dominio personalizado del perimetro."
+  value       = module.perimeter.custom_domain_status
+}
+
+output "perimeter_route53_alias_fqdn" {
+  description = "FQDN del alias Route 53 para el perimetro, si aplica."
+  value       = module.perimeter.route53_alias_fqdn
+}
+
 output "observability_sns_topic_arn" {
   description = "ARN del topic SNS que recibe las alertas operativas."
   value       = module.observability.sns_topic_arn

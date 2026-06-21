@@ -30,6 +30,12 @@ variable "alb_ingress_ports" {
   }
 }
 
+variable "alb_ingress_use_cloudfront_prefix_list" {
+  description = "Restringe el ALB para aceptar trafico solo desde el managed prefix list origin-facing de CloudFront."
+  type        = bool
+  default     = false
+}
+
 variable "ec2_ingress_ports" {
   description = "Puertos de aplicacion que EC2 recibe unicamente desde el ALB."
   type        = list(number)

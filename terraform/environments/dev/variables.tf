@@ -74,6 +74,12 @@ variable "alb_ingress_ports" {
   default     = [80, 443]
 }
 
+variable "alb_ingress_use_cloudfront_prefix_list" {
+  description = "Restringe el ALB para aceptar trafico solo desde CloudFront."
+  type        = bool
+  default     = false
+}
+
 variable "ec2_ingress_ports" {
   description = "Puertos de aplicacion expuestos por EC2 solo al ALB."
   type        = list(number)
@@ -437,6 +443,62 @@ variable "autoscaling_health_check_grace_period" {
   description = "Segundos de gracia antes de evaluar health checks del ASG."
   type        = number
   default     = 180
+}
+
+# --- Perimetro publico ---
+
+variable "enable_perimeter" {
+  description = "Activa CloudFront y WAF delante del endpoint publico del ambiente."
+  type        = bool
+  default     = false
+}
+
+variable "perimeter_origin_protocol_policy" {
+  description = "Politica de protocolo entre CloudFront y el origen."
+  type        = string
+  default     = "http-only"
+
+  validation {
+    condition     = contains(["http-only", "https-only", "match-viewer"], var.perimeter_origin_protocol_policy)
+    error_message = "perimeter_origin_protocol_policy debe ser `http-only`, `https-only` o `match-viewer`."
+  }
+}
+
+variable "perimeter_custom_domain_name" {
+  description = "Dominio personalizado opcional para CloudFront."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "perimeter_enable_acm_certificate" {
+  description = "Solicita un certificado ACM en us-east-1 para el dominio personalizado."
+  type        = bool
+  default     = false
+}
+
+variable "perimeter_manage_route53_records" {
+  description = "Crea registros DNS en Route 53 cuando exista hosted zone disponible."
+  type        = bool
+  default     = false
+}
+
+variable "perimeter_route53_zone_id" {
+  description = "Hosted zone ID de Route 53 donde se publicara el dominio del perimetro."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "perimeter_price_class" {
+  description = "Price class de CloudFront para el perimetro."
+  type        = string
+  default     = "PriceClass_100"
+
+  validation {
+    condition     = contains(["PriceClass_All", "PriceClass_200", "PriceClass_100"], var.perimeter_price_class)
+    error_message = "perimeter_price_class debe ser `PriceClass_100`, `PriceClass_200` o `PriceClass_All`."
+  }
 }
 
 # --- Observabilidad ---
