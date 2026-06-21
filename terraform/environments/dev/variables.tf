@@ -438,3 +438,30 @@ variable "autoscaling_health_check_grace_period" {
   type        = number
   default     = 180
 }
+
+# --- Observabilidad ---
+
+variable "observability_sns_email_endpoint" {
+  description = "Correo electronico que recibira las alertas SNS. Si es null no se crea la suscripcion."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "observability_log_retention_in_days" {
+  description = "Dias de retencion para los log groups de CloudWatch."
+  type        = number
+  default     = 14
+}
+
+variable "observability_ec2_cpu_threshold" {
+  description = "Umbral de CPU para la alarma de la instancia EC2."
+  type        = number
+  default     = 80
+}
+
+variable "observability_rds_cpu_threshold" {
+  description = "Umbral de CPU para la alarma del cluster Aurora."
+  type        = number
+  default     = 80
+}

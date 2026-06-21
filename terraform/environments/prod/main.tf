@@ -77,6 +77,21 @@ module "cache" {
   tags                    = local.common_tags
 }
 
+module "observability" {
+  source = "../../modules/observability"
+
+  name                  = local.name_prefix
+  project_name          = var.project_name
+  environment           = var.environment
+  db_cluster_id         = module.database.cluster_id
+  enable_ec2_alarms     = false
+  sns_email_endpoint    = var.observability_sns_email_endpoint
+  log_retention_in_days = var.observability_log_retention_in_days
+  ec2_cpu_threshold     = var.observability_ec2_cpu_threshold
+  rds_cpu_threshold     = var.observability_rds_cpu_threshold
+  tags                  = local.common_tags
+}
+
 module "networking" {
   source = "../../modules/networking"
 

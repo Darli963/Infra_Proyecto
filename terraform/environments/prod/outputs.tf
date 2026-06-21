@@ -84,3 +84,21 @@ output "redis_secret_arn" {
   value       = module.cache.secret_arn
   sensitive   = true
 }
+
+output "observability_sns_topic_arn" {
+  description = "ARN del topic SNS que recibe las alertas operativas."
+  value       = module.observability.sns_topic_arn
+}
+
+output "observability_log_groups" {
+  description = "Log groups creados para logs del sistema y de la aplicacion."
+  value = {
+    system = module.observability.system_log_group_name
+    app    = module.observability.app_log_group_name
+  }
+}
+
+output "observability_alarm_names" {
+  description = "Nombres de las alarmas activas de observabilidad."
+  value       = module.observability.alarm_names
+}
