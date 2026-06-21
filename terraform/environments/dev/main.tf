@@ -232,17 +232,18 @@ module "perimeter" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  enabled                = var.enable_perimeter && var.enable_load_balancer
-  name                   = "${local.name_prefix}-public"
-  origin_domain_name     = module.edge.alb_dns_name
-  origin_http_port       = var.load_balancer_listener_port
-  origin_protocol_policy = var.perimeter_origin_protocol_policy
-  custom_domain_name     = var.perimeter_custom_domain_name
-  enable_acm_certificate = var.perimeter_enable_acm_certificate
-  manage_route53_records = var.perimeter_manage_route53_records
-  route53_zone_id        = var.perimeter_route53_zone_id
-  price_class            = var.perimeter_price_class
-  tags                   = local.common_tags
+  enabled                 = var.enable_perimeter && var.enable_load_balancer
+  name                    = "${local.name_prefix}-public"
+  origin_domain_name      = module.edge.alb_dns_name
+  origin_http_port        = var.load_balancer_listener_port
+  origin_protocol_policy  = var.perimeter_origin_protocol_policy
+  custom_domain_name      = var.perimeter_custom_domain_name
+  enable_acm_certificate  = var.perimeter_enable_acm_certificate
+  manage_route53_records  = var.perimeter_manage_route53_records
+  route53_zone_id         = var.perimeter_route53_zone_id
+  price_class             = var.perimeter_price_class
+  api_gateway_domain_name = module.api_gateway.api_domain_name
+  tags                    = local.common_tags
 }
 
 module "observability" {

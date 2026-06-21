@@ -106,7 +106,7 @@ perimeter_manage_route53_records = false
 perimeter_route53_zone_id        = null
 perimeter_price_class            = "PriceClass_100"
 # Observabilidad
-observability_sns_email_endpoint    = null
+observability_sns_email_endpoint    = "dali0987654321@gmail.com"
 observability_log_retention_in_days = 14
 observability_ec2_cpu_threshold     = 80
 observability_rds_cpu_threshold     = 80
