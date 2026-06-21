@@ -82,3 +82,10 @@ variable "tags" {
   default     = {}
 }
 
+variable "api_gateway_domain_name" {
+  description = "Hostname del API Gateway (sin protocolo) que se agregara como origin en CloudFront para /api/*."
+  type        = string
+  default     = null
+  nullable    = true
+}
+

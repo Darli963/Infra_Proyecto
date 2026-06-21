@@ -8,6 +8,11 @@ output "api_endpoint" {
   value       = try(aws_apigatewayv2_api.this[0].api_endpoint, null)
 }
 
+output "api_domain_name" {
+  description = "Hostname del HTTP API Gateway sin protocolo ni path de stage (para usar como origen en CloudFront)."
+  value       = try(replace(aws_apigatewayv2_api.this[0].api_endpoint, "https://", ""), null)
+}
+
 output "stage_arn" {
   description = "ARN del stage default del HTTP API Gateway (necesario para asociar WAF)."
   value       = try(aws_apigatewayv2_stage.default[0].arn, null)
