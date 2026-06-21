@@ -484,12 +484,6 @@ variable "enable_perimeter" {
   default     = false
 }
 
-variable "enable_regional_waf" {
-  description = "Crea un WebACL WAFv2 REGIONAL y lo asocia al stage del API Gateway."
-  type        = bool
-  default     = false
-}
-
 variable "perimeter_origin_protocol_policy" {
   description = "Politica de protocolo entre CloudFront y el origen."
   type        = string
