@@ -55,7 +55,7 @@ test_instance_type                       = "t3.micro"
 test_instance_ami_id                     = null
 test_instance_root_volume_size           = 16
 test_instance_root_volume_type           = "gp3"
-test_instance_enable_detailed_monitoring = false
+test_instance_enable_detailed_monitoring = true
 test_instance_nodejs_major_version       = 20
 test_instance_app_base_dir               = "/opt/phase4-app"
 test_instance_app_port                   = 3000
@@ -82,6 +82,12 @@ autoscaling_desired_capacity           = 1
 autoscaling_min_size                   = 1
 autoscaling_max_size                   = 2
 autoscaling_health_check_grace_period  = 180
+
+# Observabilidad
+observability_sns_email_endpoint    = null
+observability_log_retention_in_days = 14
+observability_ec2_cpu_threshold     = 80
+observability_rds_cpu_threshold     = 80
 
 # Tags
 common_tags = {

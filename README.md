@@ -153,6 +153,107 @@ terraform apply -var-file="dev.tfvars"
 
 **Importante:** Revisa el plan antes de aplicar cambios en producción
 
+### 6. Instalar dependencias de Ansible
+
+Este repositorio usa colecciones externas para inventario dinámico y conexión por `SSM`:
+
+```bash
+ansible-galaxy collection install -r ansible/requirements.yml
+```
+
+Si vas a ejecutar playbooks localmente por `SSM`, también necesitas `session-manager-plugin` instalado en tu máquina.
+
+### 7. Ejecutar bootstrap del servidor
+
+```bash
+export AWS_REGION="us-east-1"
+ansible-playbook \
+  -i ansible/inventory/aws_ec2.yml \
+  ansible/playbooks/bootstrap.yml
+```
+
+### 8. Desplegar la aplicación
+
+```bash
+export AWS_REGION="us-east-1"
+ansible-playbook \
+  -i ansible/inventory/aws_ec2.yml \
+  ansible/playbooks/deploy_app.yml \
+  -e phase4_aurora_secret_name="$(cd terraform/environments/dev && terraform output -raw aurora_secret_name)"
+```
+
+### 9. Validar la aplicación
+
+```bash
+aws ssm start-session \
+  --region us-east-1 \
+  --target "$(cd terraform/environments/dev && terraform output -raw test_instance_id)"
+```
+
+Dentro de la instancia:
+
+```bash
+curl http://127.0.0.1:3000/healthz
+curl http://127.0.0.1:3000/db-check
+sudo systemctl status phase4-smoke-app --no-pager
+```
+
+### 10. Destruir el ambiente cuando termines
+
+Para no dejar costos innecesarios en `dev`:
+
+```bash
+cd terraform/environments/dev
+terraform destroy -var-file="dev.tfvars"
+```
+
+Si el bucket tiene versionado y contiene objetos de pruebas de `Ansible`, vacíalo antes de repetir el `destroy`.
+
+## Flujo completo recomendado en `dev`
+
+Este es el orden sugerido si quieres levantar el proyecto desde cero y validarlo de punta a punta:
+
+1. Clona el repositorio.
+2. Configura credenciales AWS válidas.
+3. Exporta `AWS_REGION`, `TF_STATE_BUCKET` y `TF_LOCK_TABLE`.
+4. Revisa `terraform/environments/dev/dev.tfvars`.
+5. Ejecuta `terraform init`.
+6. Ejecuta `terraform validate` y `terraform plan -var-file="dev.tfvars"`.
+7. Ejecuta `terraform apply -var-file="dev.tfvars"`.
+8. Instala colecciones con `ansible-galaxy collection install -r ansible/requirements.yml`.
+9. Ejecuta `ansible/playbooks/bootstrap.yml`.
+10. Ejecuta `ansible/playbooks/deploy_app.yml`.
+11. Valida `/healthz`, `/db-check` y el servicio `phase4-smoke-app`.
+12. Si estás cerrando Fase 8, valida además `CloudWatch`, `SNS` y alarmas.
+13. Destruye `dev` si no lo vas a seguir usando.
+
+## Variables mínimas que debes revisar antes de desplegar
+
+Antes de correr `terraform apply`, revisa estos archivos:
+
+- `terraform/environments/dev/dev.tfvars`
+- `terraform/environments/prod/prod.tfvars`
+
+Variables especialmente importantes:
+
+- `aws_region`: región donde se desplegará el ambiente.
+- `app_bucket_name`: nombre globalmente único del bucket de artefactos.
+- `database_mode`: en `dev` puede apuntar a un cluster externo tipo `express`.
+- `external_aurora_cluster_identifier`: identificador del cluster externo usado en `dev`.
+- `external_aurora_secret_name`: secreto de AWS Secrets Manager que usa la app en `dev`.
+- `enable_test_instance`: define si se crea la EC2 de validación.
+- `observability_sns_email_endpoint`: correo para confirmar la suscripción SNS si quieres cerrar Fase 8.
+
+## Qué necesitas tener creado en AWS
+
+Antes del primer despliegue desde una máquina local o desde GitHub Actions, asegúrate de tener:
+
+- bucket `S3` para el backend remoto de Terraform
+- tabla `DynamoDB` para el locking del estado
+- credenciales AWS válidas o federación `OIDC` si usas GitHub Actions
+- en `dev`, el cluster Aurora externo y su secreto si trabajas en modo `express`
+- permisos suficientes para crear VPC, EC2, IAM, S3, CloudWatch y SNS
+
 ## Bootstrap mínimo del repositorio
 
 Antes de automatizar despliegues, este repositorio debe mantener estas bases:
@@ -213,6 +314,112 @@ Secretos obligatorios:
 
 - `terraform/environments/prod/main.tf` todavia no modela una capa de compute o Auto Scaling para la app
 - por eso `deploy_prod.yml` aplica la infraestructura de `prod` siempre, pero solo ejecuta `bootstrap` y `deploy_app` cuando detecta hosts compatibles administrados por `SSM`
+
+## Observabilidad minima - Fase 8
+
+La Fase 8 agrega una base minima de observabilidad sin romper la Fase 7:
+
+- log groups de CloudWatch para sistema y aplicacion
+- topic SNS para notificaciones operativas
+- alarma real de CPU sobre Aurora en `dev` y `prod`
+- alarmas de CPU y `StatusCheckFailed` para la EC2 de prueba cuando exista en `dev`
+- configuracion del `amazon-cloudwatch-agent` para enviar `/var/log/messages` y `/var/log/phase4-smoke-app.log`
+
+### Recursos esperados
+
+En cada ambiente Terraform crea:
+
+- log group de sistema: `/<project_name>/<environment>/system`
+- log group de aplicacion: `/<project_name>/<environment>/app`
+- topic SNS: `<project_name>-<environment>-observability-alerts`
+- alarma Aurora CPU alta: `<project_name>-<environment>-rds-cpu-high`
+
+En `dev`, si `enable_test_instance = true`, tambien crea:
+
+- alarma EC2 CPU alta: `<project_name>-<environment>-ec2-cpu-high`
+- alarma EC2 `StatusCheckFailed`: `<project_name>-<environment>-ec2-status-check-failed`
+
+### Variables nuevas
+
+Debes revisar o definir estas variables en `terraform/environments/dev/*.tfvars` y `terraform/environments/prod/*.tfvars`:
+
+- `observability_sns_email_endpoint`: correo que recibira la suscripcion SNS; si queda en `null`, el topic se crea pero la suscripcion no
+- `observability_log_retention_in_days`: retencion de logs en CloudWatch
+- `observability_ec2_cpu_threshold`: umbral de CPU para la alarma EC2 cuando exista instancia administrada
+- `observability_rds_cpu_threshold`: umbral de CPU para la alarma de Aurora
+
+### Consideraciones operativas
+
+- el rol IAM de EC2 ahora adjunta `CloudWatchAgentServerPolicy` para permitir metricas y logs
+- `bootstrap.yml` deja activado el rol `monitoring` por defecto
+- la app escribe su salida en `/var/log/phase4-smoke-app.log`
+- en `prod`, mientras no existan hosts administrados por `SSM`, veras topic SNS, alarmas y log groups, pero no flujo real de logs de app
+
+### Validacion manual
+
+1. Aplica Terraform en el ambiente objetivo:
+
+```bash
+cd terraform/environments/dev
+terraform apply -var-file="dev.tfvars"
+```
+
+2. Si configuraste `observability_sns_email_endpoint`, acepta el correo de confirmacion que envia SNS.
+
+3. Ejecuta `bootstrap.yml` y `deploy_app.yml` para que la instancia instale el agente y la app genere logs:
+
+```bash
+export AWS_REGION=us-east-1
+ansible-playbook -i ansible/inventory/aws_ec2.yml ansible/playbooks/bootstrap.yml
+ansible-playbook \
+  -i ansible/inventory/aws_ec2.yml \
+  ansible/playbooks/deploy_app.yml \
+  -e phase4_aurora_secret_name="$(cd terraform/environments/dev && terraform output -raw aurora_secret_name)"
+```
+
+4. Verifica dentro de la instancia:
+
+```bash
+sudo systemctl status amazon-cloudwatch-agent --no-pager
+sudo systemctl status phase4-smoke-app --no-pager
+sudo tail -n 50 /var/log/phase4-smoke-app.log
+curl http://127.0.0.1:3000/healthz
+curl http://127.0.0.1:3000/db-check
+```
+
+5. Verifica en CloudWatch:
+
+- que existan los log groups `/<project_name>/<environment>/system` y `/<project_name>/<environment>/app`
+- que lleguen eventos nuevos desde la instancia
+- que existan las alarmas listadas en `terraform output observability_alarm_names`
+
+6. Demuestra la notificacion SNS:
+
+```bash
+aws sns publish \
+  --region us-east-1 \
+  --topic-arn "$(terraform output -raw observability_sns_topic_arn)" \
+  --message "Prueba manual de observabilidad Fase 8"
+```
+
+7. Opcional para probar la alarma EC2 CPU en `dev`:
+
+```bash
+aws ssm start-session --region us-east-1 --target "$(terraform output -raw test_instance_id)"
+```
+
+Ya dentro de la instancia:
+
+```bash
+nohup bash -lc 'yes > /dev/null' >/tmp/cpu-burn-1.log 2>&1 &
+nohup bash -lc 'yes > /dev/null' >/tmp/cpu-burn-2.log 2>&1 &
+```
+
+Mantelo unos minutos, confirma la transicion de la alarma en CloudWatch y luego detiene la carga:
+
+```bash
+pkill -f 'yes > /dev/null'
+```
 
 ## Orden recomendado
 

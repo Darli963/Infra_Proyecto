@@ -10,6 +10,8 @@ Group={{ phase4_app_group }}
 WorkingDirectory={{ phase4_app_dir }}
 EnvironmentFile={{ phase4_app_dir }}/.env
 ExecStart=/usr/bin/node {{ phase4_app_dir }}/server.js
+StandardOutput=append:{{ phase4_app_log_file }}
+StandardError=append:{{ phase4_app_log_file }}
 Restart=always
 RestartSec=5
 

@@ -31,6 +31,12 @@ phase4_env_vars:
   NODE_ENV: "{{ phase4_node_env }}"
   AWS_REGION: "{{ ansible_aws_ssm_region }}"
   PHASE4_AURORA_SECRET_NAME: "{{ phase4_aurora_secret_name }}"
-phase4_monitoring_enabled: false
+phase4_environment: "{{ (tags | default({})).Environment | default('dev') }}"
+phase4_project_name: "{{ (tags | default({})).Project | default('infra-proyecto') }}"
+phase4_app_log_file: "/var/log/{{ phase4_service_name }}.log"
+phase4_monitoring_enabled: true
 phase4_monitoring_namespace: InfraProyecto/Phase4
 phase4_monitoring_config_path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+phase4_monitoring_system_log_file: /var/log/messages
+phase4_monitoring_system_log_group: "/{{ phase4_project_name }}/{{ phase4_environment }}/system"
+phase4_monitoring_app_log_group: "/{{ phase4_project_name }}/{{ phase4_environment }}/app"

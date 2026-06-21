@@ -221,3 +221,30 @@ variable "redis_secret_name" {
   type        = string
   default     = null
 }
+
+# --- Observabilidad ---
+
+variable "observability_sns_email_endpoint" {
+  description = "Correo electronico que recibira las alertas SNS. Si es null no se crea la suscripcion."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "observability_log_retention_in_days" {
+  description = "Dias de retencion para los log groups de CloudWatch."
+  type        = number
+  default     = 14
+}
+
+variable "observability_ec2_cpu_threshold" {
+  description = "Umbral de CPU para la alarma de una instancia EC2 si existe compute administrado en prod."
+  type        = number
+  default     = 80
+}
+
+variable "observability_rds_cpu_threshold" {
+  description = "Umbral de CPU para la alarma del cluster Aurora."
+  type        = number
+  default     = 80
+}

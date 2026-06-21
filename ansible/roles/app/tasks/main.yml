@@ -71,6 +71,14 @@
     force: true
   notify: Reiniciar aplicacion
 
+- name: Crear archivo de logs de la aplicacion
+  ansible.builtin.file:
+    path: "{{ phase4_app_log_file }}"
+    state: touch
+    owner: "{{ phase4_app_user }}"
+    group: "{{ phase4_app_group }}"
+    mode: "0644"
+
 - name: Crear unidad systemd para la aplicacion
   ansible.builtin.template:
     src: app.service.j2

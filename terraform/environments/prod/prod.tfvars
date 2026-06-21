@@ -45,6 +45,12 @@ redis_engine_version     = "7.0"
 redis_num_cache_clusters = 2
 redis_secret_name        = "infra-proyecto/prod/redis"
 
+# Observabilidad
+observability_sns_email_endpoint    = null
+observability_log_retention_in_days = 14
+observability_ec2_cpu_threshold     = 80
+observability_rds_cpu_threshold     = 80
+
 # Tags
 common_tags = {
   Environment = "prod"
