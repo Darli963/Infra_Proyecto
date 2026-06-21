@@ -445,10 +445,47 @@ variable "autoscaling_health_check_grace_period" {
   default     = 180
 }
 
+# --- Secrets Manager ---
+
+variable "app_config_secret_name" {
+  description = "Nombre del secreto de configuracion de la app en Secrets Manager."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+# --- API Gateway ---
+
+variable "enable_api_gateway" {
+  description = "Activa el modulo api_gateway (HTTP API + VPC Link hacia el ALB)."
+  type        = bool
+  default     = true
+}
+
+# --- Auth (Cognito) ---
+
+variable "enable_auth" {
+  description = "Activa el modulo auth (Cognito User Pool)."
+  type        = bool
+  default     = true
+}
+
+variable "enable_jwt_authorizer" {
+  description = "Asocia un JWT authorizer de Cognito al route $default del API Gateway."
+  type        = bool
+  default     = false
+}
+
 # --- Perimetro publico ---
 
 variable "enable_perimeter" {
   description = "Activa CloudFront y WAF delante del endpoint publico del ambiente."
+  type        = bool
+  default     = false
+}
+
+variable "enable_regional_waf" {
+  description = "Crea un WebACL WAFv2 REGIONAL y lo asocia al stage del API Gateway."
   type        = bool
   default     = false
 }

@@ -242,3 +242,100 @@ resource "aws_route53_record" "cloudfront_alias" {
     evaluate_target_health = false
   }
 }
+
+# WAF REGIONAL — protege el HTTP API Gateway (scope distinto al WebACL de CloudFront)
+resource "aws_wafv2_web_acl" "regional" {
+  count = var.enable_regional_waf ? 1 : 0
+  name  = "${var.name}-regional-web-acl"
+  scope = "REGIONAL"
+
+  default_action {
+    allow {}
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${replace(var.name, "-", "")}RegionalWebAcl"
+    sampled_requests_enabled   = true
+  }
+
+  rule {
+    name     = "AWSManagedRulesAmazonIpReputationList"
+    priority = 10
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesAmazonIpReputationList"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${replace(var.name, "-", "")}RegionalIpReputation"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "AWSManagedRulesCommonRuleSet"
+    priority = 20
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${replace(var.name, "-", "")}RegionalCommonRules"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "AWSManagedRulesKnownBadInputsRuleSet"
+    priority = 30
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${replace(var.name, "-", "")}RegionalKnownBadInputs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${var.name}-regional-web-acl"
+      Tier = "edge"
+    }
+  )
+}
+
+resource "aws_wafv2_web_acl_association" "api_gateway" {
+  count        = var.enable_regional_waf ? 1 : 0
+  resource_arn = var.api_gateway_stage_arn
+  web_acl_arn  = aws_wafv2_web_acl.regional[0].arn
+}
