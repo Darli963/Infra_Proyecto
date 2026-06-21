@@ -13,6 +13,11 @@ output "stage_arn" {
   value       = try(aws_apigatewayv2_stage.default[0].arn, null)
 }
 
+output "stage_name" {
+  description = "Nombre del stage default del HTTP API Gateway."
+  value       = try(aws_apigatewayv2_stage.default[0].name, null)
+}
+
 output "vpc_link_sg_id" {
   description = "ID del Security Group creado para el VPC Link."
   value       = try(aws_security_group.vpc_link[0].id, null)

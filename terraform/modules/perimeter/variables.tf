@@ -88,8 +88,15 @@ variable "enable_regional_waf" {
   default     = false
 }
 
-variable "api_gateway_stage_arn" {
-  description = "ARN del stage del HTTP API Gateway al que se asociara el WAF regional."
+variable "api_gateway_id" {
+  description = "ID del HTTP API Gateway al que se asociara el WAF regional."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "api_gateway_stage_name" {
+  description = "Nombre del stage del HTTP API Gateway al que se asociara el WAF regional."
   type        = string
   default     = null
   nullable    = true
