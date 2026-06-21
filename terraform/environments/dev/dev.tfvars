@@ -13,6 +13,9 @@ map_public_ip_on_launch = true
 single_nat_gateway      = true
 
 # Security Groups
+# NOTA: alb_ingress_cidrs NO se aplica cuando alb_ingress_use_cloudfront_prefix_list = true.
+# security_base ignora estos CIDRs y usa el managed prefix list de CloudFront origin-facing.
+# El valor se mantiene para no romper entornos donde alb_ingress_use_cloudfront_prefix_list = false.
 alb_ingress_cidrs                      = ["0.0.0.0/0"]
 alb_ingress_ports                      = [80]
 alb_ingress_use_cloudfront_prefix_list = true
@@ -44,10 +47,10 @@ db_apply_immediately               = true
 db_secret_name                     = "infra-proyecto/dev/aurora"
 
 # Cache opcional
-enable_redis             = false
+enable_redis             = true
 redis_node_type          = "cache.t4g.micro"
 redis_engine_version     = "7.0"
-redis_num_cache_clusters = 1
+redis_num_cache_clusters = 2
 redis_secret_name        = "infra-proyecto/dev/redis"
 
 # Compute / Phase 4
@@ -68,7 +71,7 @@ load_balancer_listener_port            = 80
 load_balancer_target_port              = 3000
 load_balancer_health_check_path        = "/healthz"
 load_balancer_health_check_matcher     = "200"
-enable_compute_group                   = false
+enable_compute_group                   = true
 autoscaling_instance_type              = "t3.micro"
 autoscaling_ami_id                     = null
 autoscaling_root_volume_size           = 16
@@ -84,6 +87,16 @@ autoscaling_min_size                   = 1
 autoscaling_max_size                   = 2
 autoscaling_health_check_grace_period  = 180
 
+# API Gateway
+enable_api_gateway    = true
+enable_jwt_authorizer = false
+
+# Auth (Cognito)
+enable_auth = true
+
+# Secrets Manager
+app_config_secret_name = "infra-proyecto/dev/app-config"
+
 # Perimetro publico
 enable_perimeter                 = true
 perimeter_origin_protocol_policy = "http-only"
@@ -92,6 +105,7 @@ perimeter_enable_acm_certificate = false
 perimeter_manage_route53_records = false
 perimeter_route53_zone_id        = null
 perimeter_price_class            = "PriceClass_100"
+enable_regional_waf              = true
 
 # Observabilidad
 observability_sns_email_endpoint    = null

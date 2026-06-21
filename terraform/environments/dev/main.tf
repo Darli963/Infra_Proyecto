@@ -48,9 +48,10 @@ module "security_base" {
 module "storage" {
   source = "../../modules/storage"
 
-  bucket_name        = var.app_bucket_name
-  force_destroy      = var.bucket_force_destroy
-  versioning_enabled = var.bucket_versioning_enabled
+  bucket_name            = var.app_bucket_name
+  force_destroy          = var.bucket_force_destroy
+  versioning_enabled     = var.bucket_versioning_enabled
+  app_config_secret_name = var.app_config_secret_name
   tags = merge(
     local.common_tags,
     {
@@ -133,7 +134,7 @@ module "compute" {
   app_base_dir               = var.test_instance_app_base_dir
   app_port                   = var.test_instance_app_port
   aws_region                 = var.aws_region
-  secret_arns                = concat([local.database_secret_arn], var.enable_redis ? [module.cache.secret_arn] : [])
+  secret_arns                = compact(concat([local.database_secret_arn], var.enable_redis ? [module.cache.secret_arn] : [], [module.storage.app_config_secret_arn]))
   artifact_bucket_arn        = module.storage.bucket_arn
   db_connect_resource_arns   = var.db_connect_resource_arns
   tags                       = local.common_tags
@@ -155,6 +156,34 @@ module "edge" {
   target_instance_id         = module.compute.instance_id
   enable_deletion_protection = false
   tags                       = local.common_tags
+}
+
+module "auth" {
+  count  = var.enable_auth ? 1 : 0
+  source = "../../modules/auth"
+
+  enabled      = var.enable_auth
+  name         = local.name_prefix
+  project_name = var.project_name
+  environment  = var.environment
+  tags         = local.common_tags
+}
+
+module "api_gateway" {
+  source = "../../modules/api_gateway"
+
+  enabled               = var.enable_api_gateway && var.enable_load_balancer
+  name                  = "${local.name_prefix}-api"
+  vpc_id                = module.networking.vpc_id
+  private_subnet_ids    = module.networking.private_subnet_ids
+  alb_listener_arn      = module.edge.listener_arn
+  alb_security_group_id = module.security_base.security_group_ids.alb
+  enable_jwt_authorizer = var.enable_jwt_authorizer
+
+  cognito_user_pool_endpoint  = var.enable_auth && var.enable_jwt_authorizer ? module.auth[0].user_pool_endpoint : null
+  cognito_user_pool_client_id = var.enable_auth && var.enable_jwt_authorizer ? module.auth[0].user_pool_client_id : null
+
+  tags = local.common_tags
 }
 
 module "compute_group" {
@@ -180,7 +209,7 @@ module "compute_group" {
   artifact_bucket_arn        = module.storage.bucket_arn
   database_secret_name       = local.database_secret_name
   aws_region                 = var.aws_region
-  secret_arns                = concat([local.database_secret_arn], var.enable_redis ? [module.cache.secret_arn] : [])
+  secret_arns                = compact(concat([local.database_secret_arn], var.enable_redis ? [module.cache.secret_arn] : [], [module.storage.app_config_secret_arn]))
   db_connect_resource_arns   = var.db_connect_resource_arns
   desired_capacity           = var.autoscaling_desired_capacity
   min_size                   = var.autoscaling_min_size
@@ -213,6 +242,8 @@ module "perimeter" {
   manage_route53_records = var.perimeter_manage_route53_records
   route53_zone_id        = var.perimeter_route53_zone_id
   price_class            = var.perimeter_price_class
+  enable_regional_waf    = var.enable_regional_waf
+  api_gateway_stage_arn  = var.enable_regional_waf ? module.api_gateway.stage_arn : null
   tags                   = local.common_tags
 }
 
