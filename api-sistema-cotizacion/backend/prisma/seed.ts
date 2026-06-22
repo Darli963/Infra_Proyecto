@@ -1,9 +1,12 @@
 import { PrismaClient, InputType } from "@prisma/client";
+import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
   // Concesionaria de ejemplo
+  const passwordHash = await bcrypt.hash("password123", 10);
+
   const dealership = await prisma.dealership.upsert({
     where: { slug: "moto-demo" },
     update: {},
@@ -12,6 +15,7 @@ async function main() {
       slug: "moto-demo",
       email: "contacto@motodemo.com",
       phone: "+1-555-0100",
+      passwordHash,
     },
   });
 

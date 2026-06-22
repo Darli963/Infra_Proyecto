@@ -62,29 +62,6 @@ export interface MotorcycleInput {
   images?: { url: string; altText?: string; isPrimary?: boolean; sortOrder?: number }[];
 }
 
-// ─── cliente ─────────────────────────────────────────────────────────────────
-
-export const api = {
-  auth: {
-    login: (email: string, password: string) =>
-      request<LoginResponse>("/auth/dealership/login", { method: "POST", body: JSON.stringify({ email, password }) }),
-  },
-
-  // endpoints públicos (sin token)
-  public: {
-    motorcycles: {
-      list: (params?: URLSearchParams) =>
-        pub<PaginatedResponse<Motorcycle>>(`/public/motorcycles${params ? `?${params}` : ""}`),
-      get: (id: string) =>
-        pub<Motorcycle>(`/public/motorcycles/${id}`),
-    },
-    riskQuestions: { list: () => pub<RiskQuestion[]>("/public/risk-questions") },
-    quote: {
-      simulate: (payload: SimulatePayload) =>
-        request<QuoteResult>("/public/quote/simulate", { method: "POST", body: JSON.stringify(payload) }),
-    },
-  },
-
 export interface QuoteRule {
   id: string;
   motorcycleId: string | null;
@@ -126,28 +103,51 @@ export interface RiskQuestionInput {
   options?: { label: string; riskFactor?: number; sortOrder?: number }[];
 }
 
+// ─── cliente ─────────────────────────────────────────────────────────────────
+
+export const api = {
+  auth: {
+    login: (email: string, password: string) =>
+      request<LoginResponse>("/auth/dealership/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  },
+
+  // endpoints públicos (sin token)
+  public: {
+    motorcycles: {
+      list: (params?: URLSearchParams) =>
+        pub<PaginatedResponse<Motorcycle>>(`/public/motorcycles${params ? `?${params}` : ""}`),
+      get: (id: string) =>
+        pub<Motorcycle>(`/public/motorcycles/${id}`),
+    },
+    riskQuestions: { list: () => pub<RiskQuestion[]>("/public/risk-questions") },
+    quote: {
+      simulate: (payload: SimulatePayload) =>
+        request<QuoteResult>("/public/quote/simulate", { method: "POST", body: JSON.stringify(payload) }),
+    },
+  },
+
   // endpoints privados (con token)
   dealer: {
     motorcycles: {
       list: (params?: URLSearchParams) =>
         get<PaginatedResponse<Motorcycle>>(`/dealer/motorcycles${params ? `?${params}` : ""}`),
-      get:    (id: string)                            => get<Motorcycle>(`/dealer/motorcycles/${id}`),
-      create: (data: MotorcycleInput)                 => post<Motorcycle>("/dealer/motorcycles", data),
+      get:    (id: string)                                 => get<Motorcycle>(`/dealer/motorcycles/${id}`),
+      create: (data: MotorcycleInput)                      => post<Motorcycle>("/dealer/motorcycles", data),
       update: (id: string, data: Partial<MotorcycleInput>) => put<Motorcycle>(`/dealer/motorcycles/${id}`, data),
-      remove: (id: string)                            => del(`/dealer/motorcycles/${id}`),
+      remove: (id: string)                                 => del(`/dealer/motorcycles/${id}`),
     },
     quoteRules: {
-      list:   ()                                         => get<QuoteRule[]>("/dealer/quote-rules"),
-      get:    (id: string)                               => get<QuoteRule>(`/dealer/quote-rules/${id}`),
-      create: (data: QuoteRuleInput)                     => post<QuoteRule>("/dealer/quote-rules", data),
-      update: (id: string, data: Partial<QuoteRuleInput>) => put<QuoteRule>(`/dealer/quote-rules/${id}`, data),
-      remove: (id: string)                               => del(`/dealer/quote-rules/${id}`),
+      list:   ()                                              => get<QuoteRule[]>("/dealer/quote-rules"),
+      get:    (id: string)                                    => get<QuoteRule>(`/dealer/quote-rules/${id}`),
+      create: (data: QuoteRuleInput)                          => post<QuoteRule>("/dealer/quote-rules", data),
+      update: (id: string, data: Partial<QuoteRuleInput>)     => put<QuoteRule>(`/dealer/quote-rules/${id}`, data),
+      remove: (id: string)                                    => del(`/dealer/quote-rules/${id}`),
     },
     riskQuestions: {
-      list:   ()                                              => get<RiskQuestionAdmin[]>("/dealer/risk-questions"),
-      create: (data: RiskQuestionInput)                      => post<RiskQuestionAdmin>("/dealer/risk-questions", data),
-      update: (id: string, data: Partial<RiskQuestionInput>) => put<RiskQuestionAdmin>(`/dealer/risk-questions/${id}`, data),
-      remove: (id: string)                                   => del(`/dealer/risk-questions/${id}`),
+      list:   ()                                                   => get<RiskQuestionAdmin[]>("/dealer/risk-questions"),
+      create: (data: RiskQuestionInput)                            => post<RiskQuestionAdmin>("/dealer/risk-questions", data),
+      update: (id: string, data: Partial<RiskQuestionInput>)       => put<RiskQuestionAdmin>(`/dealer/risk-questions/${id}`, data),
+      remove: (id: string)                                         => del(`/dealer/risk-questions/${id}`),
     },
   },
 };
