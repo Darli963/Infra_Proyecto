@@ -9,6 +9,8 @@ import QuoteResultPage      from "./pages/QuoteResultPage";
 import LoginPage            from "./pages/LoginPage";
 import DashboardPage        from "./pages/DashboardPage";
 import DealerMotorcyclesPage from "./pages/DealerMotorcyclesPage";
+import QuoteRulesPage        from "./pages/QuoteRulesPage";
+import RiskQuestionsPage     from "./pages/RiskQuestionsPage";
 
 export default function App() {
   return (
@@ -28,8 +30,10 @@ export default function App() {
         {/* Privado */}
         <Route element={<ProtectedRoute />}>
           <Route element={<DealerLayout />}>
-            <Route path="dashboard"   element={<DashboardPage />} />
-            <Route path="motorcycles" element={<DealerMotorcyclesPage />} />
+            <Route path="dashboard"      element={<DashboardPage />} />
+            <Route path="motorcycles"    element={<DealerMotorcyclesPage />} />
+            <Route path="quote-rules"    element={<QuoteRulesPage />} />
+            <Route path="risk-questions" element={<RiskQuestionsPage />} />
           </Route>
         </Route>
 

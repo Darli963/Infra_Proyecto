@@ -2,8 +2,10 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 const NAV = [
-  { to: "/dashboard",   label: "Dashboard",     icon: "▦" },
-  { to: "/motorcycles", label: "Motocicletas",  icon: "◈" },
+  { to: "/dashboard",      label: "Dashboard",          icon: "▦" },
+  { to: "/motorcycles",    label: "Motocicletas",        icon: "◈" },
+  { to: "/quote-rules",    label: "Reglas de cotización",icon: "%" },
+  { to: "/risk-questions", label: "Preguntas de riesgo", icon: "?" },
 ];
 
 export default function DealerLayout() {

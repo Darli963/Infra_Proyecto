@@ -85,6 +85,47 @@ export const api = {
     },
   },
 
+export interface QuoteRule {
+  id: string;
+  motorcycleId: string | null;
+  name: string;
+  factor: string;
+  fixedCharge: string;
+  currency: string;
+  description: string | null;
+  active: boolean;
+  motorcycle: { id: string; brand: string; model: string } | null;
+}
+
+export interface QuoteRuleInput {
+  name: string;
+  factor: number;
+  fixedCharge?: number;
+  currency?: string;
+  motorcycleId?: string | null;
+  description?: string;
+  active?: boolean;
+}
+
+export interface RiskQuestionAdmin {
+  id: string;
+  text: string;
+  inputType: string;
+  required: boolean;
+  sortOrder: number;
+  active: boolean;
+  options: { id: string; label: string; riskFactor: string; sortOrder: number }[];
+}
+
+export interface RiskQuestionInput {
+  text: string;
+  inputType?: string;
+  required?: boolean;
+  sortOrder?: number;
+  active?: boolean;
+  options?: { label: string; riskFactor?: number; sortOrder?: number }[];
+}
+
   // endpoints privados (con token)
   dealer: {
     motorcycles: {
@@ -94,6 +135,19 @@ export const api = {
       create: (data: MotorcycleInput)                 => post<Motorcycle>("/dealer/motorcycles", data),
       update: (id: string, data: Partial<MotorcycleInput>) => put<Motorcycle>(`/dealer/motorcycles/${id}`, data),
       remove: (id: string)                            => del(`/dealer/motorcycles/${id}`),
+    },
+    quoteRules: {
+      list:   ()                                         => get<QuoteRule[]>("/dealer/quote-rules"),
+      get:    (id: string)                               => get<QuoteRule>(`/dealer/quote-rules/${id}`),
+      create: (data: QuoteRuleInput)                     => post<QuoteRule>("/dealer/quote-rules", data),
+      update: (id: string, data: Partial<QuoteRuleInput>) => put<QuoteRule>(`/dealer/quote-rules/${id}`, data),
+      remove: (id: string)                               => del(`/dealer/quote-rules/${id}`),
+    },
+    riskQuestions: {
+      list:   ()                                              => get<RiskQuestionAdmin[]>("/dealer/risk-questions"),
+      create: (data: RiskQuestionInput)                      => post<RiskQuestionAdmin>("/dealer/risk-questions", data),
+      update: (id: string, data: Partial<RiskQuestionInput>) => put<RiskQuestionAdmin>(`/dealer/risk-questions/${id}`, data),
+      remove: (id: string)                                   => del(`/dealer/risk-questions/${id}`),
     },
   },
 };
