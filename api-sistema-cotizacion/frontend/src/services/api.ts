@@ -7,45 +7,93 @@ import type {
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const STORAGE_KEY = "mq_auth";
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Error de red");
-  return (await res.json()).data as T;
+function getToken(): string | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as { token: string }).token : null;
+  } catch { return null; }
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  auth = false
+): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+  if (auth) {
+    const token = getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${BASE}${path}`, { ...options, headers });
+  if (res.status === 204) return undefined as T;
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.message ?? json.errors?.join(", ") ?? "Error de red");
   return json.data as T;
 }
+
+const pub  = <T>(path: string)                      => request<T>(path);
+const get  = <T>(path: string)                      => request<T>(path, {}, true);
+const post = <T>(path: string, body: unknown)       => request<T>(path, { method: "POST",  body: JSON.stringify(body) }, true);
+const put  = <T>(path: string, body: unknown)       => request<T>(path, { method: "PUT",   body: JSON.stringify(body) }, true);
+const del  =    (path: string)                      => request<void>(path, { method: "DELETE" }, true);
+
+// ─── tipos del dealer ────────────────────────────────────────────────────────
 
 export interface LoginResponse {
   dealership: { id: string; name: string; email: string; slug: string };
   token: string;
 }
 
+export interface MotorcycleInput {
+  brand: string;
+  model: string;
+  year: number;
+  engineCC: number;
+  price: number;
+  currency?: string;
+  category: string;
+  description?: string;
+  active?: boolean;
+  images?: { url: string; altText?: string; isPrimary?: boolean; sortOrder?: number }[];
+}
+
+// ─── cliente ─────────────────────────────────────────────────────────────────
+
 export const api = {
   auth: {
     login: (email: string, password: string) =>
-      post<LoginResponse>("/auth/dealership/login", { email, password }),
+      request<LoginResponse>("/auth/dealership/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   },
-  motorcycles: {
-    list: (params?: URLSearchParams) =>
-      get<PaginatedResponse<Motorcycle>>(`/public/motorcycles${params ? `?${params}` : ""}`),
-    get: (id: string) =>
-      get<Motorcycle>(`/public/motorcycles/${id}`),
+
+  // endpoints públicos (sin token)
+  public: {
+    motorcycles: {
+      list: (params?: URLSearchParams) =>
+        pub<PaginatedResponse<Motorcycle>>(`/public/motorcycles${params ? `?${params}` : ""}`),
+      get: (id: string) =>
+        pub<Motorcycle>(`/public/motorcycles/${id}`),
+    },
+    riskQuestions: { list: () => pub<RiskQuestion[]>("/public/risk-questions") },
+    quote: {
+      simulate: (payload: SimulatePayload) =>
+        request<QuoteResult>("/public/quote/simulate", { method: "POST", body: JSON.stringify(payload) }),
+    },
   },
-  riskQuestions: {
-    list: () => get<RiskQuestion[]>("/public/risk-questions"),
-  },
-  quote: {
-    simulate: (payload: SimulatePayload) =>
-      post<QuoteResult>("/public/quote/simulate", payload),
+
+  // endpoints privados (con token)
+  dealer: {
+    motorcycles: {
+      list: (params?: URLSearchParams) =>
+        get<PaginatedResponse<Motorcycle>>(`/dealer/motorcycles${params ? `?${params}` : ""}`),
+      get:    (id: string)                            => get<Motorcycle>(`/dealer/motorcycles/${id}`),
+      create: (data: MotorcycleInput)                 => post<Motorcycle>("/dealer/motorcycles", data),
+      update: (id: string, data: Partial<MotorcycleInput>) => put<Motorcycle>(`/dealer/motorcycles/${id}`, data),
+      remove: (id: string)                            => del(`/dealer/motorcycles/${id}`),
+    },
   },
 };

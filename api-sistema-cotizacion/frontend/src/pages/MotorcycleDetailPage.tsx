@@ -7,7 +7,7 @@ import { Spinner, ErrorMessage } from "../components/Feedback";
 export default function MotorcycleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: moto, loading, error } = useFetch(() => api.motorcycles.get(id!), [id]);
+  const { data: moto, loading, error } = useFetch(() => api.public.motorcycles.get(id!), [id]);
   const [activeImg, setActiveImg] = useState(0);
 
   if (loading) return <Spinner />;

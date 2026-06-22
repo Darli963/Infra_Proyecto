@@ -60,7 +60,7 @@ export default function SimulatePage() {
   const { id: motorcycleId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: questions, loading, error } = useFetch(() => api.riskQuestions.list(), []);
+  const { data: questions, loading, error } = useFetch(() => api.public.riskQuestions.list(), []);
 
   const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
@@ -86,7 +86,7 @@ export default function SimulatePage() {
         return { questionId: q.id, textValue: val || undefined };
       });
 
-      const result = await api.quote.simulate({
+      const result = await api.public.quote.simulate({
         motorcycleId: motorcycleId!,
         applicantName: name,
         applicantEmail: email,

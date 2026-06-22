@@ -17,7 +17,7 @@ export default function CatalogPage() {
   params.set("page", String(page));
 
   const { data, loading, error } = useFetch(
-    () => api.motorcycles.list(params),
+    () => api.public.motorcycles.list(params),
     [search, category, page]
   );
 

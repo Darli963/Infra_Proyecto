@@ -8,6 +8,7 @@ import SimulatePage         from "./pages/SimulatePage";
 import QuoteResultPage      from "./pages/QuoteResultPage";
 import LoginPage            from "./pages/LoginPage";
 import DashboardPage        from "./pages/DashboardPage";
+import DealerMotorcyclesPage from "./pages/DealerMotorcyclesPage";
 
 export default function App() {
   return (
@@ -27,7 +28,8 @@ export default function App() {
         {/* Privado */}
         <Route element={<ProtectedRoute />}>
           <Route element={<DealerLayout />}>
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="dashboard"   element={<DashboardPage />} />
+            <Route path="motorcycles" element={<DealerMotorcyclesPage />} />
           </Route>
         </Route>
 
