@@ -10,16 +10,16 @@ interface Dealership {
 interface AuthState {
   token: string;
   dealership: Dealership;
+  provider: "local" | "cognito";
 }
 
 interface AuthContextValue {
   auth: AuthState | null;
-  login: (token: string, dealership: Dealership) => void;
+  login: (token: string, dealership: Dealership, provider?: "local" | "cognito") => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
 const STORAGE_KEY = "mq_auth";
 
 function loadAuth(): AuthState | null {
@@ -34,8 +34,12 @@ function loadAuth(): AuthState | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<AuthState | null>(loadAuth);
 
-  const login = useCallback((token: string, dealership: Dealership) => {
-    const state: AuthState = { token, dealership };
+  const login = useCallback((
+    token: string,
+    dealership: Dealership,
+    provider: "local" | "cognito" = "local"
+  ) => {
+    const state: AuthState = { token, dealership, provider };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     setAuth(state);
   }, []);

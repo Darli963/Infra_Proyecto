@@ -20,7 +20,15 @@ export default function LoginPage() {
     setError(null);
     try {
       const { token, dealership } = await api.auth.login(email, password);
-      login(token, dealership);
+      // El backend indica el proveedor en el payload del JWT;
+      // lo decodificamos sin verificar firma para leer el campo "provider"
+      const provider = (() => {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          return (payload.provider ?? "local") as "local" | "cognito";
+        } catch { return "local" as const; }
+      })();
+      login(token, dealership, provider);
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError((err as Error).message);
@@ -33,7 +41,6 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-md">
         <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">Acceso concesionaria</h1>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Correo electrónico</label>
@@ -51,9 +58,7 @@ export default function LoginPage() {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           {error && <ErrorMessage message={error} />}
-
           <button
             type="submit" disabled={loading}
             className="w-full rounded-xl bg-blue-600 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition"
