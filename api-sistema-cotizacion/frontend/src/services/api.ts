@@ -25,7 +25,16 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return json.data as T;
 }
 
+export interface LoginResponse {
+  dealership: { id: string; name: string; email: string; slug: string };
+  token: string;
+}
+
 export const api = {
+  auth: {
+    login: (email: string, password: string) =>
+      post<LoginResponse>("/auth/dealership/login", { email, password }),
+  },
   motorcycles: {
     list: (params?: URLSearchParams) =>
       get<PaginatedResponse<Motorcycle>>(`/public/motorcycles${params ? `?${params}` : ""}`),
