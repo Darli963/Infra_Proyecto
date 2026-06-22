@@ -4,12 +4,33 @@ import type { Motorcycle } from "../services/types";
 import { ErrorMessage } from "./Feedback";
 
 const CATEGORIES = ["sport", "touring", "cruiser", "off-road", "scooter"];
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const STORAGE_KEY = "mq_auth";
 
-interface ImageRow { url: string; altText: string; isPrimary: boolean }
+interface ImageRow { url: string; altText: string; isPrimary: boolean; uploading?: boolean }
 
 function toImageRows(moto?: Motorcycle): ImageRow[] {
   if (!moto?.images.length) return [{ url: "", altText: "", isPrimary: true }];
   return moto.images.map((i) => ({ url: i.url, altText: i.altText ?? "", isPrimary: i.isPrimary }));
+}
+
+async function uploadToS3(file: File): Promise<string> {
+  const token = (() => {
+    try { return (JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as { token?: string }).token ?? ""; }
+    catch { return ""; }
+  })();
+
+  const form = new FormData();
+  form.append("image", file);
+
+  const res = await fetch(`${BASE}/dealer/motorcycles/upload-image`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message ?? "Error al subir imagen");
+  return (json.data as { url: string }).url;
 }
 
 export function MotorcycleForm({
@@ -34,14 +55,27 @@ export function MotorcycleForm({
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState<string | null>(null);
 
-  function setImg(idx: number, field: keyof ImageRow, value: string | boolean) {
-    setImages((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  function setImg(idx: number, patch: Partial<ImageRow>) {
+    setImages((prev) => prev.map((r, i) => i === idx ? { ...r, ...patch } : r));
   }
   function addImg()    { setImages((p) => [...p, { url: "", altText: "", isPrimary: false }]); }
   function removeImg(i: number) { setImages((p) => p.filter((_, j) => j !== i)); }
 
+  async function handleFileChange(idx: number, file: File | undefined) {
+    if (!file) return;
+    setImg(idx, { uploading: true });
+    try {
+      const url = await uploadToS3(file);
+      setImg(idx, { url, uploading: false });
+    } catch (e) {
+      setImg(idx, { uploading: false });
+      setError((e as Error).message);
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (images.some((r) => r.uploading)) return;
     setLoading(true);
     setError(null);
     try {
@@ -109,36 +143,47 @@ export function MotorcycleForm({
         <textarea className={field} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
 
-      {/* Imágenes */}
+      {/* Imágenes — URL manual o subida a S3 */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">Imágenes (URLs)</span>
+          <span className="text-sm font-medium text-gray-700">Imágenes</span>
           <button type="button" onClick={addImg} className="text-xs text-blue-600 hover:underline">+ Añadir</button>
         </div>
         <div className="space-y-2">
           {images.map((row, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <input
-                className={`${field} flex-1`} placeholder="https://..." value={row.url}
-                onChange={(e) => setImg(i, "url", e.target.value)}
-              />
-              <input
-                className={`${field} w-28`} placeholder="Alt text" value={row.altText}
-                onChange={(e) => setImg(i, "altText", e.target.value)}
-              />
-              <label className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
-                <input type="radio" name="primary" checked={row.isPrimary}
-                  onChange={() => setImages((p) => p.map((r, j) => ({ ...r, isPrimary: j === i })))}
-                  className="accent-blue-600"
+            <div key={i} className="rounded-lg border border-gray-200 p-2 space-y-1.5">
+              <div className="flex gap-2 items-center">
+                <input
+                  className={`${field} flex-1`} placeholder="URL de imagen..."
+                  value={row.url} onChange={(e) => setImg(i, { url: e.target.value })}
                 />
-                Principal
-              </label>
-              {images.length > 1 && (
-                <button type="button" onClick={() => removeImg(i)} className="text-red-400 hover:text-red-600 text-lg leading-none">×</button>
-              )}
+                {/* Subida a S3 — solo disponible cuando S3_BUCKET_NAME está configurado */}
+                <label className={`shrink-0 cursor-pointer rounded-lg border px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50 ${row.uploading ? "opacity-50 pointer-events-none" : ""}`}>
+                  {row.uploading ? "Subiendo…" : "📁 Subir"}
+                  <input
+                    type="file" accept="image/*" className="hidden"
+                    onChange={(e) => handleFileChange(i, e.target.files?.[0])}
+                  />
+                </label>
+                <label className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
+                  <input type="radio" name="primary" checked={row.isPrimary}
+                    onChange={() => setImages((p) => p.map((r, j) => ({ ...r, isPrimary: j === i })))}
+                    className="accent-blue-600"
+                  />
+                  Principal
+                </label>
+                {images.length > 1 && (
+                  <button type="button" onClick={() => removeImg(i)} className="text-red-400 hover:text-red-600 text-lg leading-none">×</button>
+                )}
+              </div>
+              <input
+                className={`${field}`} placeholder="Texto alternativo (alt)"
+                value={row.altText} onChange={(e) => setImg(i, { altText: e.target.value })}
+              />
             </div>
           ))}
         </div>
+        <p className="mt-1 text-xs text-gray-400">Puedes pegar una URL o subir un archivo directamente a S3.</p>
       </div>
 
       {error && <ErrorMessage message={error} />}
@@ -147,7 +192,7 @@ export function MotorcycleForm({
         <button type="button" onClick={onCancel} className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">
           Cancelar
         </button>
-        <button type="submit" disabled={loading}
+        <button type="submit" disabled={loading || images.some((r) => r.uploading)}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
         >
           {loading ? "Guardando..." : initial ? "Guardar cambios" : "Crear motocicleta"}
