@@ -14,7 +14,8 @@ model Dealership {
   id        String   @id @default(uuid())
   name      String
   slug      String   @unique
-  email     String   @unique
+  email        String   @unique
+  passwordHash String   // bcrypt hash — reemplazado por Cognito sub en producción
   phone     String?
   address   String?
   logoUrl   String?
