@@ -23,7 +23,7 @@ export default function QuoteResultPage() {
       <div className="py-16 text-center">
         <p className="text-gray-500">
           No hay resultado de cotización.{" "}
-          <Link to="/" className="text-blue-600 underline">Volver al catálogo</Link>
+          <Link to="/catalog" className="text-blue-600 underline">Volver al catálogo</Link>
         </p>
       </div>
     );
@@ -94,7 +94,7 @@ export default function QuoteResultPage() {
           </button>
 
           <Link
-            to="/"
+            to="/catalog"
             className="block w-full rounded-xl border border-blue-600 py-2.5 text-center text-sm font-semibold text-blue-600 hover:bg-blue-50 transition"
           >
             Cotizar otra motocicleta

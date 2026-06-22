@@ -18,7 +18,7 @@ export default function MotorcycleDetailPage() {
 
   return (
     <div>
-      <Link to="/" className="mb-4 inline-block text-sm text-blue-600 hover:underline">← Volver al catálogo</Link>
+      <Link to="/catalog" className="mb-4 inline-block text-sm text-blue-600 hover:underline">← Volver al catálogo</Link>
 
       <div className="mt-2 grid gap-8 lg:grid-cols-2">
         {/* Galería */}
