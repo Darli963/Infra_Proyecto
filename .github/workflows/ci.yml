@@ -25,7 +25,6 @@ jobs:
   terraform-dev:
     name: Terraform dev
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,7 +36,6 @@ jobs:
           TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE }}
         run: |
           set -euo pipefail
-
           for required_var in CI_AWS_ROLE_ARN TF_STATE_BUCKET TF_LOCK_TABLE; do
             if [ -z "${!required_var}" ]; then
               echo "::error::Falta configurar la variable ${required_var} en GitHub Actions."
@@ -80,3 +78,16 @@ jobs:
           terraform plan -input=false -lock=false -no-color \
             -var-file="dev.tfvars" \
             -out="tfplan"
+
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
