@@ -1,0 +1,38 @@
+#!/bin/bash
+set -euxo pipefail
+
+dnf update -y
+dnf install -y curl-minimal gcc-c++ git jq make python3 tar
+
+curl -fsSL "https://rpm.nodesource.com/setup_${nodejs_major_version}.x" | bash -
+dnf install -y nodejs
+
+systemctl enable amazon-ssm-agent
+systemctl restart amazon-ssm-agent
+
+mkdir -p "${app_base_dir}/bin" "${app_base_dir}/releases" "${app_base_dir}/shared"
+chown -R ec2-user:ec2-user "${app_base_dir}"
+
+cat > /usr/local/bin/phase4-fetch-secret <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+  echo "Uso: phase4-fetch-secret <region> <secret-name>" >&2
+  exit 1
+fi
+
+aws secretsmanager get-secret-value \
+  --region "$1" \
+  --secret-id "$2" \
+  --query SecretString \
+  --output text
+EOF
+
+chmod +x /usr/local/bin/phase4-fetch-secret
+
+cat > /etc/profile.d/phase4-test-instance.sh <<EOF
+export AWS_REGION="${aws_region}"
+export PHASE4_APP_PORT="${app_port}"
+export PHASE4_APP_BASE_DIR="${app_base_dir}"
+EOF

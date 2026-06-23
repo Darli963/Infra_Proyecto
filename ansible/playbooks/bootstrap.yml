@@ -1,0 +1,9 @@
+- name: Bootstrap del servidor de aplicacion
+  hosts: "{{ target_hosts | default('phase4_test') }}"
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: base
+    - role: node
+    - role: monitoring

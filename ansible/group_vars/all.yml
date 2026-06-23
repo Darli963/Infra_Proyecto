@@ -1,0 +1,41 @@
+ansible_connection: amazon.aws.aws_ssm
+ansible_user: ec2-user
+ansible_python_interpreter: /usr/bin/python3
+ansible_aws_ssm_region: "{{ lookup('env', 'AWS_REGION') | default('us-east-1', true) }}"
+
+phase4_app_name: phase4-smoke-app
+phase4_service_name: phase4-smoke-app
+phase4_app_root: /opt/phase4-app
+phase4_app_dir: "{{ phase4_app_root }}/current"
+phase4_app_release_name: live
+phase4_app_release_dir: "{{ phase4_app_root }}/releases/{{ phase4_app_release_name }}"
+phase4_app_user: ec2-user
+phase4_app_group: ec2-user
+phase4_app_port: 3000
+phase4_node_env: development
+phase4_aurora_secret_name: ""
+phase4_node_major_version: 20
+phase4_node_setup_url: "https://rpm.nodesource.com/setup_{{ phase4_node_major_version }}.x"
+phase4_base_packages:
+  - awscli
+  - curl-minimal
+  - gcc-c++
+  - git
+  - jq
+  - make
+  - python3
+  - tar
+phase4_env_vars:
+  PORT: "{{ phase4_app_port }}"
+  NODE_ENV: "{{ phase4_node_env }}"
+  AWS_REGION: "{{ ansible_aws_ssm_region }}"
+  PHASE4_AURORA_SECRET_NAME: "{{ phase4_aurora_secret_name }}"
+phase4_environment: "{{ (tags | default({})).Environment | default('dev') }}"
+phase4_project_name: "{{ (tags | default({})).Project | default('infra-proyecto') }}"
+phase4_app_log_file: "/var/log/{{ phase4_service_name }}.log"
+phase4_monitoring_enabled: true
+phase4_monitoring_namespace: InfraProyecto/Phase4
+phase4_monitoring_config_path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+phase4_monitoring_system_log_file: /var/log/messages
+phase4_monitoring_system_log_group: "/{{ phase4_project_name }}/{{ phase4_environment }}/system"
+phase4_monitoring_app_log_group: "/{{ phase4_project_name }}/{{ phase4_environment }}/app"
