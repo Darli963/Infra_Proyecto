@@ -1,121 +1,76 @@
 # Infra_Proyecto
-## Estrategia de ramas
 
-El flujo de trabajo del repositorio se basa en estas ramas:
+Repositorio de infraestructura y despliegue para un entorno en AWS con `Terraform`, `Ansible` y `GitHub Actions`. Incluye automatización para `dev` y `prod`, una base mínima de observabilidad y un perímetro público con `CloudFront` y `WAF`.
 
-- `main`: rama estable de producción.
-- `develop`: rama de integración para cambios validados.
-- `feat/*`: ramas de trabajo para nuevas funcionalidades, mejoras o cambios específicos.
+## Estructura
 
-### Regla básica
-
-- No trabajar directamente sobre `main`.
-- Los cambios nuevos deben salir desde `develop`.
-- Cada tarea debe desarrollarse en una rama `feat/*`.
-- Cuando una funcionalidad esté lista, se crea un `Pull Request` hacia `develop`.
-- Solo lo que esté probado y estable pasa de `develop` a `main`.
-
-### Clonar el repositorio
-
-```
-git clone https://github.com/Darli963/Infra_Proyecto.git
-cd Infra_Proyecto
+```text
+.
+├── .github/workflows/      # CI/CD con GitHub Actions
+├── ansible/                # Bootstrap y despliegue de la app
+├── api-sistema-cotizacion/ # Backend y frontend de ejemplo
+├── terraform/              # Módulos y ambientes de infraestructura
+└── docs/                   # Diagramas y apoyo visual
 ```
 
-### Actualizar la rama `develop`
+## Qué resuelve
 
-```
-git checkout develop
-git pull origin develop
-```
+- aprovisionamiento de infraestructura en AWS con `Terraform`
+- bootstrap y despliegue de aplicación con `Ansible`
+- validación continua con `GitHub Actions`
+- observabilidad base con `CloudWatch` y `SNS`
+- exposición segura en `dev` con `CloudFront` y `WAF`
 
-### Crear una rama de trabajo
+## Prerrequisitos
 
-```
-git checkout -b feat/nombre-de-la-funcionalidad
-```
+- `Terraform >= 1.0`
+- `Ansible >= 2.10`
+- `AWS CLI`
+- `Git`
+- credenciales AWS válidas o acceso por `OIDC`
+- backend remoto de Terraform:
+  - bucket `S3`
+  - tabla `DynamoDB`
 
-### Guardar cambios
+## Variables mínimas
 
-```
-git add .
-git commit -m "feat: agrega módulo de networking"
-```
-feat/ → nuevas funcionalidades
+Antes de desplegar, define o revisa:
 
-fix/ → corrección de errores
-
-docs/ → documentación
-
-refactor/ → reorganización o mejora del código sin cambiar funcionalidad
-
-chore/ → tareas de mantenimiento
-
-ci/ → cambios en CI/CD
-
-infra/ → cambios de infraestructura
-
-### Subir la rama al remoto
-
-```
-git push origin feat/nombre-de-la-funcionalidad
-```
-
-### Volver a `develop`
-
-```
-git checkout develop
-```
-
-## Nota importante
-
-Si vas a iniciar una nueva tarea, asegúrate de partir siempre desde una rama actualizada de `develop`.
-
----
-
-## Instrucciones de despliegue
-
-### Prerrequisitos
-
-- [Terraform](https://www.terraform.io/downloads) >= 1.0
-- [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) >= 2.10
-- AWS CLI configurado con credenciales válidas
-- Git
-
-### 1. Clonar el repositorio
-
-```
-git clone https://github.com/Darli963/Infra_Proyecto.git
-cd Infra_Proyecto
-```
-
-### 2. Configurar credenciales AWS
-
-```
-aws configure
-```
-
-O configurar variables de entorno:
-
-```
-export AWS_ACCESS_KEY_ID="tu_access_key"
-export AWS_SECRET_ACCESS_KEY="tu_secret_key"
-export AWS_DEFAULT_REGION="us-east-1"
-```
-
-Además, para trabajar con el backend remoto de Terraform:
-
-```
+```bash
 export AWS_REGION="us-east-1"
 export TF_STATE_BUCKET="tu-bucket-de-tfstate"
 export TF_LOCK_TABLE="tu-tabla-de-locks"
 ```
 
-### 3. Inicializar Terraform
+También revisa:
 
-Para ambiente de desarrollo:
+- `terraform/environments/dev/dev.tfvars`
+- `terraform/environments/prod/prod.tfvars`
 
+Variables importantes:
+
+- `app_bucket_name`
+- `database_mode`
+- `external_aurora_cluster_identifier`
+- `external_aurora_secret_name`
+- `enable_test_instance`
+- `enable_perimeter`
+- `perimeter_custom_domain_name`
+- `perimeter_route53_zone_id`
+- `observability_sns_email_endpoint`
+
+## Flujo rápido en `dev`
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/Darli963/Infra_Proyecto.git
+cd Infra_Proyecto
 ```
+
+### 2. Inicializar Terraform
+
+```bash
 cd terraform/environments/dev
 terraform init \
   -backend-config="bucket=$TF_STATE_BUCKET" \
@@ -125,64 +80,40 @@ terraform init \
   -backend-config="encrypt=true"
 ```
 
-Para ambiente de producción:
+### 3. Validar y planificar
 
-```
-cd terraform/environments/prod
-terraform init \
-  -backend-config="bucket=$TF_STATE_BUCKET" \
-  -backend-config="key=prod/terraform.tfstate" \
-  -backend-config="region=$AWS_REGION" \
-  -backend-config="dynamodb_table=$TF_LOCK_TABLE" \
-  -backend-config="encrypt=true"
-```
-
-### 4. Validar y planificar cambios
-
-```
+```bash
 terraform fmt -check
 terraform validate
 terraform plan -var-file="dev.tfvars"
 ```
 
-### 5. Aplicar infraestructura
+### 4. Aplicar infraestructura
 
-```
+```bash
 terraform apply -var-file="dev.tfvars"
 ```
 
-**Importante:** Revisa el plan antes de aplicar cambios en producción
-
-### 6. Instalar dependencias de Ansible
-
-Este repositorio usa colecciones externas para inventario dinámico y conexión por `SSM`:
+### 5. Instalar dependencias de Ansible
 
 ```bash
 ansible-galaxy collection install -r ansible/requirements.yml
 ```
 
-Si vas a ejecutar playbooks localmente por `SSM`, también necesitas `session-manager-plugin` instalado en tu máquina.
+Si usarás `SSM` localmente, instala también `session-manager-plugin`.
 
-### 7. Ejecutar bootstrap del servidor
-
-```bash
-export AWS_REGION="us-east-1"
-ansible-playbook \
-  -i ansible/inventory/aws_ec2.yml \
-  ansible/playbooks/bootstrap.yml
-```
-
-### 8. Desplegar la aplicación
+### 6. Ejecutar bootstrap y despliegue
 
 ```bash
 export AWS_REGION="us-east-1"
+ansible-playbook -i ansible/inventory/aws_ec2.yml ansible/playbooks/bootstrap.yml
 ansible-playbook \
   -i ansible/inventory/aws_ec2.yml \
   ansible/playbooks/deploy_app.yml \
   -e phase4_aurora_secret_name="$(cd terraform/environments/dev && terraform output -raw aurora_secret_name)"
 ```
 
-### 9. Validar la aplicación
+### 7. Validar aplicación
 
 ```bash
 aws ssm start-session \
@@ -198,368 +129,64 @@ curl http://127.0.0.1:3000/db-check
 sudo systemctl status phase4-smoke-app --no-pager
 ```
 
-### 10. Destruir el ambiente cuando termines
-
-Para no dejar costos innecesarios en `dev`:
+### 8. Destruir `dev` si ya no lo necesitas
 
 ```bash
 cd terraform/environments/dev
 terraform destroy -var-file="dev.tfvars"
 ```
 
-Si el bucket tiene versionado y contiene objetos de pruebas de `Ansible`, vacíalo antes de repetir el `destroy`.
+## CI/CD
 
-## Flujo completo recomendado en `dev`
+El repositorio usa tres workflows principales:
 
-Este es el orden sugerido si quieres levantar el proyecto desde cero y validarlo de punta a punta:
+- `.github/workflows/ci.yml`: valida `fmt`, `init`, `validate` y `plan` en `dev`
+- `.github/workflows/deploy_dev.yml`: despliega infraestructura y app en `dev`
+- `.github/workflows/deploy_prod.yml`: despliega infraestructura en `prod` y la app cuando hay hosts administrados por `SSM`
 
-1. Clona el repositorio.
-2. Configura credenciales AWS válidas.
-3. Exporta `AWS_REGION`, `TF_STATE_BUCKET` y `TF_LOCK_TABLE`.
-4. Revisa `terraform/environments/dev/dev.tfvars`.
-5. Ejecuta `terraform init`.
-6. Ejecuta `terraform validate` y `terraform plan -var-file="dev.tfvars"`.
-7. Ejecuta `terraform apply -var-file="dev.tfvars"`.
-8. Instala colecciones con `ansible-galaxy collection install -r ansible/requirements.yml`.
-9. Ejecuta `ansible/playbooks/bootstrap.yml`.
-10. Ejecuta `ansible/playbooks/deploy_app.yml`.
-11. Valida `/healthz`, `/db-check` y el servicio `phase4-smoke-app`.
-12. Si estás cerrando Fase 8, valida además `CloudWatch`, `SNS` y alarmas.
-13. Destruye `dev` si no lo vas a seguir usando.
+Variables relevantes en GitHub:
 
-## Variables mínimas que debes revisar antes de desplegar
-
-Antes de correr `terraform apply`, revisa estos archivos:
-
-- `terraform/environments/dev/dev.tfvars`
-- `terraform/environments/prod/prod.tfvars`
-
-Variables especialmente importantes:
-
-- `aws_region`: región donde se desplegará el ambiente.
-- `app_bucket_name`: nombre globalmente único del bucket de artefactos.
-- `database_mode`: en `dev` puede apuntar a un cluster externo tipo `express`.
-- `external_aurora_cluster_identifier`: identificador del cluster externo usado en `dev`.
-- `external_aurora_secret_name`: secreto de AWS Secrets Manager que usa la app en `dev`.
-- `enable_test_instance`: define si se crea la EC2 de validación.
-- `observability_sns_email_endpoint`: correo para confirmar la suscripción SNS si quieres cerrar Fase 8.
-- `enable_load_balancer`: en `dev` debe estar activo para publicar el origen detrás de CloudFront.
-- `enable_perimeter`: activa `CloudFront` + `WAF` para la Fase 9.
-- `alb_ingress_use_cloudfront_prefix_list`: restringe el `ALB` para aceptar tráfico solo desde CloudFront.
-- `perimeter_custom_domain_name`: dominio propio opcional para publicar el perímetro.
-- `perimeter_enable_acm_certificate`: solicita un certificado `ACM` en `us-east-1`.
-- `perimeter_manage_route53_records`: crea registros en `Route 53` si existe una hosted zone real.
-- `perimeter_route53_zone_id`: hosted zone ID donde se publicará el dominio.
-
-## Qué necesitas tener creado en AWS
-
-Antes del primer despliegue desde una máquina local o desde GitHub Actions, asegúrate de tener:
-
-- bucket `S3` para el backend remoto de Terraform
-- tabla `DynamoDB` para el locking del estado
-- credenciales AWS válidas o federación `OIDC` si usas GitHub Actions
-- en `dev`, el cluster Aurora externo y su secreto si trabajas en modo `express`
-- permisos suficientes para crear VPC, EC2, IAM, S3, CloudWatch, SNS, CloudFront, WAFv2, ACM y, si aplica, Route 53
-- si quieres dominio propio en Fase 9, una hosted zone pública real en `Route 53`
-
-## Bootstrap mínimo del repositorio
-
-Antes de automatizar despliegues, este repositorio debe mantener estas bases:
-
-- estructura de `terraform/environments` y `terraform/modules`
-- `ci.yml` con `terraform fmt -check`, `terraform init`, `terraform validate` y `terraform plan`
-- variables por ambiente claras en `variables.tf` y `*.tfvars`
-- versionado de providers con `.terraform.lock.hcl`
-- reglas de `.gitignore` para no subir `.terraform/`, `terraform.tfstate*` ni archivos locales
-
-## GitHub Actions CI/CD
-
-La Fase 7 queda apoyada en tres workflows:
-
-- `.github/workflows/ci.yml`: valida `fmt`, `validate` y `plan` sobre `terraform/environments/dev` en `pull_request` hacia `develop` y `main`
-- `.github/workflows/deploy_dev.yml`: aplica infraestructura en `dev` al hacer merge hacia `develop` y luego ejecuta `bootstrap.yml` + `deploy_app.yml` por `SSM`
-- `.github/workflows/deploy_prod.yml`: aplica infraestructura en `prod` al hacer merge hacia `main` y despliega la app solo si existen hosts administrados por `SSM`
-
-### Variables y permisos requeridos en GitHub
-
-Variables del repositorio:
-
-- `AWS_REGION`: región AWS usada por Terraform, AWS CLI y Ansible
-- `CI_AWS_ROLE_ARN`: rol IAM asumido por `ci.yml` vía `OIDC`
-- `TF_STATE_BUCKET`: bucket `S3` que guarda el estado remoto de Terraform
-- `TF_LOCK_TABLE`: tabla `DynamoDB` usada para locking del estado
-
-Variables por environment (`dev` y `prod`):
-
-- `AWS_ROLE_ARN`: rol IAM que asumen `deploy_dev.yml` y `deploy_prod.yml`
-- `TF_STATE_BUCKET`: puedes heredarlo del repositorio o declararlo también por environment si quieres aislarlo
-- `TF_LOCK_TABLE`: puedes heredarlo del repositorio o declararlo también por environment si quieres aislarlo
-- `AWS_REGION`: puedes heredarlo del repositorio o declararlo también por environment
+- `AWS_REGION`
+- `CI_AWS_ROLE_ARN`
+- `TF_STATE_BUCKET`
+- `TF_LOCK_TABLE`
 
 Permisos mínimos:
 
-- `id-token: write` para federación `OIDC` con AWS
-- `contents: read` para hacer checkout del repositorio
+- `id-token: write`
+- `contents: read`
 
-Secretos obligatorios:
+## Observabilidad y perímetro
 
-- No se requieren claves estáticas de AWS si `OIDC` está configurado correctamente
+El proyecto ya contempla una base operativa para:
 
-### Prerrequisitos en AWS
+- `CloudWatch Logs`
+- alarmas de CPU para `Aurora` y, en `dev`, también para `EC2`
+- notificaciones con `SNS`
+- publicación HTTPS con `CloudFront`
+- protección básica con `WAF`
 
-- un proveedor `OIDC` de GitHub confiado por los roles IAM usados en CI/CD
-- un bucket `S3` ya creado para el backend remoto de Terraform
-- una tabla `DynamoDB` para locking del estado
-- en `dev`, el cluster `Aurora Express` y el secreto externo definidos en `dev.tfvars`
-- si quieres despliegue de app en `prod`, al menos una instancia administrada por `SSM` con tags `Project=infra-proyecto`, `Environment=prod` y `Role=app-server` o `Phase=phase4`
+En `prod`, el despliegue de aplicación sigue condicionado a que existan hosts administrados por `SSM`.
 
-### Dependencias de Ansible en CI/CD
+## Estrategia de ramas
 
-- `ansible/requirements.yml` instala `amazon.aws` y `community.aws`
-- los playbooks usan `amazon.aws.aws_ssm`, por lo que el runner instala también `session-manager-plugin`
+- `main`: producción
+- `develop`: integración
+- `feat/*`: funcionalidades
+- `fix/*`: correcciones
+- `docs/*`: documentación
+- `ci/*`: cambios de pipeline
+- `infra/*`: cambios de infraestructura
 
-### Limitación actual de prod
-
-- `terraform/environments/prod/main.tf` todavia no modela una capa de compute o Auto Scaling para la app
-- por eso `deploy_prod.yml` aplica la infraestructura de `prod` siempre, pero solo ejecuta `bootstrap` y `deploy_app` cuando detecta hosts compatibles administrados por `SSM`
-
-## Observabilidad minima - Fase 8
-
-La Fase 8 agrega una base minima de observabilidad sin romper la Fase 7:
-
-- log groups de CloudWatch para sistema y aplicacion
-- topic SNS para notificaciones operativas
-- alarma real de CPU sobre Aurora en `dev` y `prod`
-- alarmas de CPU y `StatusCheckFailed` para la EC2 de prueba cuando exista en `dev`
-- configuracion del `amazon-cloudwatch-agent` para enviar `/var/log/messages` y `/var/log/phase4-smoke-app.log`
-
-### Recursos esperados
-
-En cada ambiente Terraform crea:
-
-- log group de sistema: `/<project_name>/<environment>/system`
-- log group de aplicacion: `/<project_name>/<environment>/app`
-- topic SNS: `<project_name>-<environment>-observability-alerts`
-- alarma Aurora CPU alta: `<project_name>-<environment>-rds-cpu-high`
-
-En `dev`, si `enable_test_instance = true`, tambien crea:
-
-- alarma EC2 CPU alta: `<project_name>-<environment>-ec2-cpu-high`
-- alarma EC2 `StatusCheckFailed`: `<project_name>-<environment>-ec2-status-check-failed`
-
-### Variables nuevas
-
-Debes revisar o definir estas variables en `terraform/environments/dev/*.tfvars` y `terraform/environments/prod/*.tfvars`:
-
-- `observability_sns_email_endpoint`: correo que recibira la suscripcion SNS; si queda en `null`, el topic se crea pero la suscripcion no
-- `observability_log_retention_in_days`: retencion de logs en CloudWatch
-- `observability_ec2_cpu_threshold`: umbral de CPU para la alarma EC2 cuando exista instancia administrada
-- `observability_rds_cpu_threshold`: umbral de CPU para la alarma de Aurora
-
-### Consideraciones operativas
-
-- el rol IAM de EC2 ahora adjunta `CloudWatchAgentServerPolicy` para permitir metricas y logs
-- `bootstrap.yml` deja activado el rol `monitoring` por defecto
-- la app escribe su salida en `/var/log/phase4-smoke-app.log`
-- en `prod`, mientras no existan hosts administrados por `SSM`, veras topic SNS, alarmas y log groups, pero no flujo real de logs de app
-
-### Validacion manual
-
-1. Aplica Terraform en el ambiente objetivo:
+Flujo recomendado:
 
 ```bash
-cd terraform/environments/dev
-terraform apply -var-file="dev.tfvars"
+git checkout develop
+git pull origin develop
+git checkout -b feat/nombre-del-cambio
+git add .
+git commit -m "feat: agrega modulo de networking"
+git push origin feat/nombre-del-cambio
 ```
 
-2. Si configuraste `observability_sns_email_endpoint`, acepta el correo de confirmacion que envia SNS.
-
-3. Ejecuta `bootstrap.yml` y `deploy_app.yml` para que la instancia instale el agente y la app genere logs:
-
-```bash
-export AWS_REGION=us-east-1
-ansible-playbook -i ansible/inventory/aws_ec2.yml ansible/playbooks/bootstrap.yml
-ansible-playbook \
-  -i ansible/inventory/aws_ec2.yml \
-  ansible/playbooks/deploy_app.yml \
-  -e phase4_aurora_secret_name="$(cd terraform/environments/dev && terraform output -raw aurora_secret_name)"
-```
-
-4. Verifica dentro de la instancia:
-
-```bash
-sudo systemctl status amazon-cloudwatch-agent --no-pager
-sudo systemctl status phase4-smoke-app --no-pager
-sudo tail -n 50 /var/log/phase4-smoke-app.log
-curl http://127.0.0.1:3000/healthz
-curl http://127.0.0.1:3000/db-check
-```
-
-5. Verifica en CloudWatch:
-
-- que existan los log groups `/<project_name>/<environment>/system` y `/<project_name>/<environment>/app`
-- que lleguen eventos nuevos desde la instancia
-- que existan las alarmas listadas en `terraform output observability_alarm_names`
-
-6. Demuestra la notificacion SNS:
-
-```bash
-aws sns publish \
-  --region us-east-1 \
-  --topic-arn "$(terraform output -raw observability_sns_topic_arn)" \
-  --message "Prueba manual de observabilidad Fase 8"
-```
-
-7. Opcional para probar la alarma EC2 CPU en `dev`:
-
-```bash
-aws ssm start-session --region us-east-1 --target "$(terraform output -raw test_instance_id)"
-```
-
-Ya dentro de la instancia:
-
-```bash
-nohup bash -lc 'yes > /dev/null' >/tmp/cpu-burn-1.log 2>&1 &
-nohup bash -lc 'yes > /dev/null' >/tmp/cpu-burn-2.log 2>&1 &
-```
-
-Mantelo unos minutos, confirma la transicion de la alarma en CloudWatch y luego detiene la carga:
-
-```bash
-pkill -f 'yes > /dev/null'
-```
-
-## Perimetro minimo - Fase 9
-
-La Fase 9 agrega una capa pública mínima y realista sobre la base ya operativa de Fase 8:
-
-- `CloudFront` como punto de entrada HTTPS
-- `WAFv2` asociado a CloudFront con reglas administradas de reputación, reglas comunes y entradas maliciosas conocidas
-- integración opcional con `ACM` en `us-east-1` para dominio propio
-- integración opcional con `Route 53` cuando exista una hosted zone real
-- endurecimiento del `ALB` en `dev` para aceptar tráfico solo desde el managed prefix list origin-facing de CloudFront
-
-### Diseño aplicado
-
-- en `dev`, el origen realista es el `ALB` del módulo `edge`
-- en `dev`, la app queda publicable por HTTPS aunque no exista dominio propio, usando el dominio `*.cloudfront.net`
-- `ACM` y `Route 53` quedan implementados de forma activable por variables; no se inventa un dominio si todavía no existe
-- en `prod`, la capa de perímetro queda preparada por variables, pero no se activa por defecto porque `prod` todavía no modela `compute`, `ASG` ni `ALB` para la app
-- `WAF` se asocia a `CloudFront` como opción principal porque protege el punto de entrada público real
-
-### Variables nuevas
-
-Revisa estas variables en ambos ambientes:
-
-- `enable_perimeter`: activa o no el módulo de perímetro
-- `perimeter_origin_protocol_policy`: política entre CloudFront y el origen; hoy queda en `http-only` para el flujo mínimo realista del repo
-- `perimeter_custom_domain_name`: dominio propio opcional
-- `perimeter_enable_acm_certificate`: solicita el certificado viewer en `ACM`
-- `perimeter_manage_route53_records`: habilita creación de registros DNS y validación DNS en `Route 53`
-- `perimeter_route53_zone_id`: hosted zone ID de `Route 53`
-- `perimeter_price_class`: clase de precio de CloudFront
-- `perimeter_origin_domain_name`: solo en `prod`, DNS del origen público real cuando exista
-
-### Estado por ambiente
-
-- `dev`: queda listo para exponer la smoke app por `CloudFront` con `HTTPS`, `WAF` y `ALB` restringido a CloudFront
-- `dev`: el dominio propio es opcional; si no defines `perimeter_custom_domain_name`, el endpoint válido será `terraform output -raw perimeter_https_endpoint`
-- `prod`: mientras no exista un origen público real, deja `enable_perimeter = false` y documenta el dominio/origen futuro en `prod.tfvars`
-- `prod`: si más adelante existe un `ALB` o endpoint público estable, basta con completar `perimeter_origin_domain_name` y, si aplica, el dominio propio
-
-### Prerrequisitos para dominio propio
-
-Para activar dominio real con `ACM` + `Route 53` necesitas:
-
-- `perimeter_custom_domain_name` con un FQDN real, por ejemplo `app.midominio.com`
-- `perimeter_enable_acm_certificate = true`
-- `perimeter_manage_route53_records = true`
-- `perimeter_route53_zone_id` apuntando a la hosted zone pública correcta
-
-Si alguno de esos datos no existe todavía:
-
-- deja `perimeter_custom_domain_name = null`
-- deja `perimeter_enable_acm_certificate = false`
-- deja `perimeter_manage_route53_records = false`
-- valida la Fase 9 usando el dominio `cloudfront.net`
-
-### Validacion manual
-
-1. Aplica Terraform en `dev`:
-
-```bash
-cd terraform/environments/dev
-terraform init \
-  -backend-config="bucket=$TF_STATE_BUCKET" \
-  -backend-config="key=dev/terraform.tfstate" \
-  -backend-config="region=$AWS_REGION" \
-  -backend-config="dynamodb_table=$TF_LOCK_TABLE" \
-  -backend-config="encrypt=true"
-terraform apply -var-file="dev.tfvars"
-```
-
-2. Ejecuta `bootstrap.yml` y `deploy_app.yml` para asegurar que la app responda detrás del `ALB`:
-
-```bash
-export AWS_REGION=us-east-1
-ansible-playbook -i ansible/inventory/aws_ec2.yml ansible/playbooks/bootstrap.yml
-ansible-playbook \
-  -i ansible/inventory/aws_ec2.yml \
-  ansible/playbooks/deploy_app.yml \
-  -e phase4_aurora_secret_name="$(cd terraform/environments/dev && terraform output -raw aurora_secret_name)"
-```
-
-3. Obtén el endpoint HTTPS:
-
-```bash
-cd terraform/environments/dev
-terraform output perimeter_https_endpoint
-terraform output perimeter_cloudfront_domain_name
-terraform output perimeter_web_acl_arn
-```
-
-4. Valida respuesta pública por HTTPS:
-
-```bash
-curl -I "$(terraform output -raw perimeter_https_endpoint)"
-curl "$(terraform output -raw perimeter_https_endpoint)/healthz"
-curl "$(terraform output -raw perimeter_https_endpoint)/db-check"
-```
-
-5. Verifica endurecimiento del origen:
-
-- el `ALB` debe existir, pero su `Security Group` ya no debe aceptar `0.0.0.0/0` si `alb_ingress_use_cloudfront_prefix_list = true`
-- el tráfico público válido debe entrar por CloudFront, no directamente por el `ALB`
-
-6. Verifica el `WAF`:
-
-- confirma en la consola de `WAF` que el `Web ACL` esté asociado a la distribución CloudFront
-- revisa métricas de reglas administradas y requests permitidos/bloqueados
-
-7. Si activaste dominio propio:
-
-- verifica que `terraform output perimeter_custom_domain_status` no quede en `not_requested`
-- espera la propagación de CloudFront y DNS
-- valida `https://<tu-dominio>` en lugar del dominio `cloudfront.net`
-
-### Limitaciones reales documentadas
-
-- `prod` todavía no tiene un origen público modelado dentro de Terraform para la app; por eso la Fase 9 en `prod` queda preparada pero no activada por defecto
-- el flujo mínimo actual termina TLS en `CloudFront`; el origen `ALB` sigue en `HTTP` porque el repositorio aún no dispone de un dominio/certificado regional para cerrar `HTTPS` extremo a extremo
-- `deploy_prod.yml` sigue condicionado a la existencia de hosts administrados por `SSM`; esta fase no modifica esa limitación
-
-### Alcance deliberadamente fuera de esta fase
-
-- `API Gateway + VPC Link` no es necesario en esta fase porque ya existe un camino más directo y suficiente con `CloudFront -> ALB`
-- `Cognito` no es necesario todavía porque la fase pide perímetro mínimo profesional, no autenticación de usuarios finales
-- la autenticación o autorización de aplicación puede evaluarse en una fase posterior cuando exista un frontend o requerimiento real de identidad
-
-## Orden recomendado
-
-1. estructura base del repo
-2. CI mínimo de IaC
-3. Fase 1 de networking
-4. validación manual en `dev`
-5. pipeline `deploy_dev`
-6. módulos restantes
-7. pipeline `deploy_prod`
+No trabajes directamente sobre `main`; parte siempre desde una `develop` actualizada.
