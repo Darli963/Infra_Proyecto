@@ -1,0 +1,48 @@
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import PublicLayout          from "./layouts/PublicLayout";
+import DealerLayout          from "./layouts/DealerLayout";
+import ProtectedRoute        from "./routes/ProtectedRoute";
+import LandingPage           from "./pages/LandingPage";
+import CatalogPage           from "./pages/CatalogPage";
+import MotorcycleDetailPage  from "./pages/MotorcycleDetailPage";
+import SimulatePage          from "./pages/SimulatePage";
+import QuoteResultPage       from "./pages/QuoteResultPage";
+import LoginPage             from "./pages/LoginPage";
+import DashboardPage         from "./pages/DashboardPage";
+import DealerMotorcyclesPage from "./pages/DealerMotorcyclesPage";
+import QuoteRulesPage        from "./pages/QuoteRulesPage";
+import RiskQuestionsPage     from "./pages/RiskQuestionsPage";
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Landing — sin layout público */}
+        <Route index element={<LandingPage />} />
+
+        {/* Público con navbar */}
+        <Route element={<PublicLayout />}>
+          <Route path="catalog"             element={<CatalogPage />} />
+          <Route path="motorcycles/:id"     element={<MotorcycleDetailPage />} />
+          <Route path="simulate/:id"        element={<SimulatePage />} />
+          <Route path="quote/result"        element={<QuoteResultPage />} />
+        </Route>
+
+        {/* Auth */}
+        <Route path="login" element={<LoginPage />} />
+
+        {/* Privado */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<DealerLayout />}>
+            <Route path="dashboard"      element={<DashboardPage />} />
+            <Route path="motorcycles"    element={<DealerMotorcyclesPage />} />
+            <Route path="quote-rules"    element={<QuoteRulesPage />} />
+            <Route path="risk-questions" element={<RiskQuestionsPage />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
