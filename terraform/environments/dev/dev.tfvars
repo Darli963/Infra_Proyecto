@@ -1,5 +1,3 @@
-skip_aws_validation = true
-
 aws_region   = "us-east-1"
 project_name = "infra-proyecto"
 environment  = "dev"
@@ -63,7 +61,7 @@ test_instance_enable_detailed_monitoring = true
 test_instance_nodejs_major_version       = 20
 test_instance_app_base_dir               = "/opt/phase4-app"
 test_instance_app_port                   = 3000
-db_connect_resource_arns                 = ["arn:aws:rds-db:us-east-1:784055307801:dbuser:*/*"]
+db_connect_resource_arns                 = []
 
 # Balanceo y escalado
 enable_load_balancer                   = true

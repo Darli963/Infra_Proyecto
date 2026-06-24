@@ -29,6 +29,12 @@ variable "map_public_ip_on_launch" {
   default     = true
 }
 
+variable "enable_nat_gateway" {
+  description = "Activa NAT Gateway para las subnets privadas."
+  type        = bool
+  default     = true
+}
+
 variable "single_nat_gateway" {
   description = "Mantiene un solo NAT Gateway para dev y reducir costo."
   type        = bool

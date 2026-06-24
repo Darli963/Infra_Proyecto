@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
   common_tags = merge(
@@ -15,6 +17,7 @@ locals {
   database_secret_arn           = var.database_mode == "express" ? data.aws_secretsmanager_secret.express[0].arn : module.database[0].secret_arn
   database_db_subnet_group_name = var.database_mode == "express" ? null : module.database[0].db_subnet_group_name
   smoke_app_source_dir          = "${path.root}/../../../ansible/files/phase4-smoke-app"
+  db_connect_resource_arns      = length(var.db_connect_resource_arns) > 0 ? var.db_connect_resource_arns : ["arn:aws:rds-db:${var.aws_region}:${data.aws_caller_identity.current.account_id}:dbuser:*/*"]
 }
 
 data "aws_rds_cluster" "express" {
@@ -136,7 +139,7 @@ module "compute" {
   aws_region                 = var.aws_region
   secret_arns                = compact(concat([local.database_secret_arn], var.enable_redis ? [module.cache.secret_arn] : [], [module.storage.app_config_secret_arn]))
   artifact_bucket_arn        = module.storage.bucket_arn
-  db_connect_resource_arns   = var.db_connect_resource_arns
+  db_connect_resource_arns   = local.db_connect_resource_arns
   tags                       = local.common_tags
 }
 
@@ -210,7 +213,7 @@ module "compute_group" {
   database_secret_name       = local.database_secret_name
   aws_region                 = var.aws_region
   secret_arns                = compact(concat([local.database_secret_arn], var.enable_redis ? [module.cache.secret_arn] : [], [module.storage.app_config_secret_arn]))
-  db_connect_resource_arns   = var.db_connect_resource_arns
+  db_connect_resource_arns   = local.db_connect_resource_arns
   desired_capacity           = var.autoscaling_desired_capacity
   min_size                   = var.autoscaling_min_size
   max_size                   = var.autoscaling_max_size
