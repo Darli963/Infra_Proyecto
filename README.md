@@ -2,16 +2,23 @@
 
 Repositorio de infraestructura y despliegue para un entorno en AWS con `Terraform`, `Ansible` y `GitHub Actions`. Incluye automatización para `dev` y `prod`, una base mínima de observabilidad y un perímetro público con `CloudFront` y `WAF`.
 
-## Estructura
+## Despliegue rápido (recomendado)
 
-```text
-.
-├── .github/workflows/      # CI/CD con GitHub Actions
-├── ansible/                # Bootstrap y despliegue de la app
-├── api-sistema-cotizacion/ # Backend y frontend de ejemplo
-├── terraform/              # Módulos y ambientes de infraestructura
-└── docs/                   # Diagramas y apoyo visual
-```
+La forma más simple y repetible para desplegar en `dev` es usando el workflow de GitHub Actions.
+
+1. Configura las variables en el environment `dev` (Settings → Environments → `dev` → Variables):
+   - `AWS_ROLE_ARN`
+   - `TF_STATE_BUCKET`
+   - `TF_LOCK_TABLE`
+   - `ANSIBLE_AWS_SSM_BUCKET_NAME`
+   - `AWS_REGION` (opcional, default: `us-east-1`)
+2. Ejecuta el workflow: Actions → `Deploy Dev` → Run workflow (branch `develop`).
+3. Validación:
+   - El workflow valida el stack al final con un health check.
+   - Health check esperado: `https://<cloudfront_domain>/api/healthz` (HTTP 200).
+   - Para validación end-to-end adicional, puedes ejecutar `ansible/playbooks/validate_deployment.yml`.
+
+Para más detalle de despliegue manual y outputs, ver [DEPLOY.md](file:///Users/dmedinasix/Desktop/Infra_Proyecto/api-sistema-cotizacion/DEPLOY.md).
 
 ## Qué resuelve
 
@@ -31,6 +38,12 @@ Repositorio de infraestructura y despliegue para un entorno en AWS con `Terrafor
 - backend remoto de Terraform:
   - bucket `S3`
   - tabla `DynamoDB`
+
+### Nota para macOS (Ansible/SSM)
+
+En macOS pueden aparecer problemas al ejecutar Ansible con conexión `amazon.aws.aws_ssm` (dependencias del Session Manager Plugin y compatibilidad del entorno).
+
+Recomendación práctica para evitar bloqueos: ejecutar Ansible desde un entorno Linux como GitHub Codespaces.
 
 ## Variables mínimas
 
@@ -59,14 +72,11 @@ Variables importantes:
 - `perimeter_route53_zone_id`
 - `observability_sns_email_endpoint`
 
-## Flujo rápido en `dev`
+## Despliegue manual en `dev` (Codespaces recomendado)
 
-### 1. Clonar el repositorio
+### 1. Abrir en Codespaces
 
-```bash
-git clone https://github.com/Darli963/Infra_Proyecto.git
-cd Infra_Proyecto
-```
+Desde GitHub: Code → Codespaces → Create codespace on `develop`.
 
 ### 2. Inicializar Terraform
 
@@ -106,33 +116,44 @@ terraform apply -var-file="dev.tfvars"
 ansible-galaxy collection install -r ansible/requirements.yml
 ```
 
-Si usarás `SSM` localmente, instala también `session-manager-plugin`.
-
 ### 6. Ejecutar bootstrap y despliegue
 
 ```bash
 export AWS_REGION="us-east-1"
-ansible-playbook -i ansible/inventory/aws_ec2.yml ansible/playbooks/bootstrap.yml
 ansible-playbook \
   -i ansible/inventory/aws_ec2.yml \
-  ansible/playbooks/deploy_app.yml \
-  -e phase4_aurora_secret_name="$(cd terraform/environments/dev && terraform output -raw aurora_secret_name)"
+  ansible/playbooks/bootstrap.yml \
+  -e target_hosts=deploy_dev
+
+ansible-playbook \
+  -i ansible/inventory/aws_ec2.yml \
+  ansible/playbooks/deploy_backend.yml \
+  -e target_hosts=deploy_dev \
+  -e backend_aurora_secret_name="$(cd terraform/environments/dev && terraform output -raw aurora_secret_name)" \
+  -e backend_s3_bucket_name="$(cd terraform/environments/dev && terraform output -raw storage_bucket_name)" \
+  -e backend_cloudfront_url="https://$(cd terraform/environments/dev && terraform output -raw cloudfront_distribution_domain_name)" \
+  -e backend_aws_region="${AWS_REGION}" \
+  -e backend_cognito_user_pool_id="$(cd terraform/environments/dev && terraform output -raw cognito_user_pool_id)" \
+  -e backend_cognito_client_id="$(cd terraform/environments/dev && terraform output -raw cognito_client_id)"
+
+ansible-playbook \
+  ansible/playbooks/deploy_frontend.yml \
+  -e frontend_cloudfront_domain="$(cd terraform/environments/dev && terraform output -raw cloudfront_distribution_domain_name)" \
+  -e frontend_cloudfront_distribution_id="$(cd terraform/environments/dev && terraform output -raw cloudfront_distribution_id)" \
+  -e frontend_s3_bucket="$(cd terraform/environments/dev && terraform output -raw storage_bucket_name)" \
+  -e frontend_aws_region="${AWS_REGION}" \
+  -e frontend_cognito_user_pool_id="$(cd terraform/environments/dev && terraform output -raw cognito_user_pool_id)" \
+  -e frontend_cognito_client_id="$(cd terraform/environments/dev && terraform output -raw cognito_client_id)"
+
+ansible-playbook \
+  ansible/playbooks/validate_deployment.yml \
+  -e cloudfront_domain="$(cd terraform/environments/dev && terraform output -raw cloudfront_distribution_domain_name)"
 ```
 
 ### 7. Validar aplicación
 
 ```bash
-aws ssm start-session \
-  --region us-east-1 \
-  --target "$(cd terraform/environments/dev && terraform output -raw test_instance_id)"
-```
-
-Dentro de la instancia:
-
-```bash
-curl http://127.0.0.1:3000/healthz
-curl http://127.0.0.1:3000/db-check
-sudo systemctl status phase4-smoke-app --no-pager
+curl -f "https://$(cd terraform/environments/dev && terraform output -raw cloudfront_distribution_domain_name)/api/healthz"
 ```
 
 ### 8. Destruir `dev` si ya no lo necesitas
@@ -153,9 +174,10 @@ El repositorio usa tres workflows principales:
 Variables relevantes en GitHub:
 
 - `AWS_REGION`
-- `CI_AWS_ROLE_ARN`
+- `AWS_ROLE_ARN`
 - `TF_STATE_BUCKET`
 - `TF_LOCK_TABLE`
+- `ANSIBLE_AWS_SSM_BUCKET_NAME`
 
 Permisos mínimos:
 
