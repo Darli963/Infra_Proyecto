@@ -71,6 +71,43 @@ jobs:
         working-directory: terraform/environments/dev
         run: terraform apply -input=false -auto-approve -var-file="dev.tfvars"
 
+      - name: Extract Terraform outputs
+        working-directory: terraform/environments/dev
+        run: |
+          set -euo pipefail
+
+          AURORA_SECRET_NAME=$(terraform output -raw aurora_secret_name)
+          S3_BUCKET_NAME=$(terraform output -raw storage_bucket_name)
+          CLOUDFRONT_DOMAIN=$(terraform output -raw cloudfront_distribution_domain_name)
+          CLOUDFRONT_DISTRIBUTION_ID=$(terraform output -raw cloudfront_distribution_id)
+          COGNITO_USER_POOL_ID=$(terraform output -raw cognito_user_pool_id)
+          COGNITO_CLIENT_ID=$(terraform output -raw cognito_client_id)
+          TEST_INSTANCE_ID=$(terraform output -raw test_instance_id)
+
+          for var in AURORA_SECRET_NAME S3_BUCKET_NAME CLOUDFRONT_DOMAIN CLOUDFRONT_DISTRIBUTION_ID COGNITO_USER_POOL_ID COGNITO_CLIENT_ID TEST_INSTANCE_ID; do
+            if [ -z "${!var}" ] || [ "${!var}" = "null" ]; then
+              echo "::error::Terraform output ${var} is empty or null"
+              exit 1
+            fi
+          done
+
+          echo "AURORA_SECRET_NAME=${AURORA_SECRET_NAME}" >> $GITHUB_ENV
+          echo "S3_BUCKET_NAME=${S3_BUCKET_NAME}" >> $GITHUB_ENV
+          echo "CLOUDFRONT_DOMAIN=${CLOUDFRONT_DOMAIN}" >> $GITHUB_ENV
+          echo "CLOUDFRONT_DISTRIBUTION_ID=${CLOUDFRONT_DISTRIBUTION_ID}" >> $GITHUB_ENV
+          echo "COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}" >> $GITHUB_ENV
+          echo "COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID}" >> $GITHUB_ENV
+          echo "TEST_INSTANCE_ID=${TEST_INSTANCE_ID}" >> $GITHUB_ENV
+
+          echo "Terraform outputs extracted successfully"
+
+      - name: Build backend
+        working-directory: api-sistema-cotizacion/backend
+        run: |
+          npm ci
+          npm run build
+          npx prisma generate
+
       - name: Instalar dependencias de Ansible y Session Manager Plugin
         run: |
           set -euo pipefail
@@ -90,11 +127,12 @@ jobs:
           session-manager-plugin --version
 
       - name: Esperar a que la instancia dev aparezca en Session Manager
-        working-directory: terraform/environments/dev
+        env:
+          TEST_INSTANCE_ID: ${{ env.TEST_INSTANCE_ID }}
         run: |
           set -euo pipefail
 
-          instance_id="$(terraform output -raw test_instance_id)"
+          instance_id="${TEST_INSTANCE_ID}"
 
           if [ -z "${instance_id}" ] || [ "${instance_id}" = "null" ]; then
             echo "::error::No se pudo resolver test_instance_id desde Terraform."
@@ -123,29 +161,52 @@ jobs:
       - name: Ejecutar bootstrap por Ansible sobre dev
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
+          ANSIBLE_AWS_SSM_BUCKET_NAME: ${{ env.S3_BUCKET_NAME }}
         run: |
           set -euo pipefail
-
-          export ANSIBLE_AWS_SSM_BUCKET_NAME
-          ANSIBLE_AWS_SSM_BUCKET_NAME="$(terraform -chdir=terraform/environments/dev output -raw s3_bucket_name)"
 
           ansible-playbook \
             -i ansible/inventory/aws_ec2.yml \
             ansible/playbooks/bootstrap.yml \
             -e target_hosts=deploy_dev
 
-      - name: Desplegar aplicacion en dev por Ansible
+      - name: Desplegar backend en dev por Ansible
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
         run: |
           set -euo pipefail
 
-          export ANSIBLE_AWS_SSM_BUCKET_NAME
-          ANSIBLE_AWS_SSM_BUCKET_NAME="$(terraform -chdir=terraform/environments/dev output -raw s3_bucket_name)"
-          aurora_secret_name="$(terraform -chdir=terraform/environments/dev output -raw aurora_secret_name)"
-
           ansible-playbook \
             -i ansible/inventory/aws_ec2.yml \
-            ansible/playbooks/deploy_app.yml \
+            ansible/playbooks/deploy_backend.yml \
             -e target_hosts=deploy_dev \
-            -e phase4_aurora_secret_name="${aurora_secret_name}"
+            -e backend_aurora_secret_name="${AURORA_SECRET_NAME}" \
+            -e backend_s3_bucket_name="${S3_BUCKET_NAME}" \
+            -e backend_cloudfront_url="https://${CLOUDFRONT_DOMAIN}" \
+            -e backend_aws_region="${AWS_REGION}" \
+            -e backend_cognito_user_pool_id="${COGNITO_USER_POOL_ID}" \
+            -e backend_cognito_client_id="${COGNITO_CLIENT_ID}"
+
+      - name: Desplegar frontend en dev por Ansible
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          set -euo pipefail
+
+          ansible-playbook \
+            ansible/playbooks/deploy_frontend.yml \
+            -e frontend_cloudfront_domain="${CLOUDFRONT_DOMAIN}" \
+            -e frontend_cloudfront_distribution_id="${CLOUDFRONT_DISTRIBUTION_ID}" \
+            -e frontend_s3_bucket="${S3_BUCKET_NAME}" \
+            -e frontend_aws_region="${AWS_REGION}" \
+            -e frontend_cognito_user_pool_id="${COGNITO_USER_POOL_ID}" \
+            -e frontend_cognito_client_id="${COGNITO_CLIENT_ID}"
+
+      - name: Validar despliegue
+        run: |
+          set -euo pipefail
+
+          echo "Validando health check en https://${CLOUDFRONT_DOMAIN}/api/healthz"
+          curl -f https://${CLOUDFRONT_DOMAIN}/api/healthz
+
+          echo "Despliegue validado exitosamente"

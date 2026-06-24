@@ -1,0 +1,100 @@
+---
+- name: Deploy Frontend to S3 and CloudFront
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    frontend_source_dir: "{{ playbook_dir }}/../api-sistema-cotizacion/frontend"
+    frontend_dist_dir: "{{ frontend_source_dir }}/dist"
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.assert:
+        that:
+          - frontend_cloudfront_domain is defined
+          - frontend_cloudfront_domain | length > 0
+          - frontend_s3_bucket is defined
+          - frontend_s3_bucket | length > 0
+          - frontend_aws_region is defined
+          - frontend_aws_region | length > 0
+          - frontend_cognito_user_pool_id is defined
+          - frontend_cognito_user_pool_id | length > 0
+          - frontend_cognito_client_id is defined
+          - frontend_cognito_client_id | length > 0
+        fail_msg: "Required frontend variables are not defined or empty"
+
+    - name: Check if frontend source directory exists
+      ansible.builtin.stat:
+        path: "{{ frontend_source_dir }}"
+      register: frontend_source
+
+    - name: Fail if frontend source directory does not exist
+      ansible.builtin.fail:
+        msg: "Frontend source directory not found at {{ frontend_source_dir }}"
+      when: not frontend_source.stat.exists
+
+  tasks:
+    - name: Create .env.production file
+      ansible.builtin.copy:
+        dest: "{{ frontend_source_dir }}/.env.production"
+        content: |
+          VITE_API_BASE_URL=https://{{ frontend_cloudfront_domain }}/api
+          VITE_COGNITO_REGION={{ frontend_aws_region }}
+          VITE_COGNITO_USER_POOL_ID={{ frontend_cognito_user_pool_id }}
+          VITE_COGNITO_CLIENT_ID={{ frontend_cognito_client_id }}
+          VITE_CLOUDFRONT_URL=https://{{ frontend_cloudfront_domain }}
+        mode: '0600'
+
+    - name: Install npm dependencies
+      community.general.npm:
+        path: "{{ frontend_source_dir }}"
+        ci: true
+
+    - name: Build frontend
+      community.general.npm:
+        path: "{{ frontend_source_dir }}"
+        production: true
+        command: run build
+
+    - name: Check if dist directory exists
+      ansible.builtin.stat:
+        path: "{{ frontend_dist_dir }}"
+      register: frontend_dist
+
+    - name: Fail if build did not create dist directory
+      ansible.builtin.fail:
+        msg: "Frontend build did not create dist directory at {{ frontend_dist_dir }}"
+      when: not frontend_dist.stat.exists
+
+    - name: Sync frontend to S3
+      amazon.aws.s3_sync:
+        bucket: "{{ frontend_s3_bucket }}"
+        prefix: frontend/
+        src: "{{ frontend_dist_dir }}/"
+        delete: true
+        cache_control: "public,max-age=31536000,immutable"
+        exclude: "index.html"
+        region: "{{ frontend_aws_region }}"
+
+    - name: Upload index.html without aggressive caching
+      amazon.aws.s3_object:
+        bucket: "{{ frontend_s3_bucket }}"
+        key: frontend/index.html
+        src: "{{ frontend_dist_dir }}/index.html"
+        cache_control: "no-cache,no-store,must-revalidate"
+        region: "{{ frontend_aws_region }}"
+        mode: put
+
+    - name: Create CloudFront invalidation
+      amazon.aws.cloudfront_invalidation:
+        distribution_id: "{{ frontend_cloudfront_distribution_id | default(omit) }}"
+        distribution_domain_name: "{{ frontend_cloudfront_domain }}"
+        invalidation_paths:
+          - "/*"
+        region: "{{ frontend_aws_region }}"
+      when: frontend_cloudfront_distribution_id is defined
+
+    - name: Display deployment status
+      ansible.builtin.debug:
+        msg: "Frontend deployment successful. Available at https://{{ frontend_cloudfront_domain }}"
