@@ -1,0 +1,16 @@
+---
+# Backend deployment defaults
+backend_release_path: /opt/cotizacion-app/releases/{{ ansible_date_time.epoch }}
+backend_source_dir: ../../../api-sistema-cotizacion/backend
+
+# Environment configuration
+backend_node_env: production
+backend_aws_region: us-east-1
+backend_auth_provider: cognito
+
+# Required variables (must be set in inventory or playbook)
+# backend_aurora_secret_name
+# backend_s3_bucket_name
+# backend_cloudfront_url
+# backend_cognito_user_pool_id
+# backend_cognito_client_id
