@@ -1,0 +1,11 @@
+---
+# Common variables for all deployments
+
+# AWS region
+aws_region: us-east-1
+
+# Application base directory
+app_base_dir: /opt/cotizacion-app
+
+# Node.js version
+nodejs_major_version: 20

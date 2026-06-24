@@ -1,0 +1,25 @@
+[Unit]
+Description=Cotizacion Backend Application
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/opt/cotizacion-app/current
+EnvironmentFile=/opt/cotizacion-app/current/.env
+ExecStart=/usr/bin/node start.js
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cotizacion-app
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

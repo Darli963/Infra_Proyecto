@@ -1,0 +1,17 @@
+---
+# Backend deployment variables for dev environment
+
+# Aurora secret name from Terraform
+backend_aurora_secret_name: "infra-proyecto/dev/aurora-new"
+
+# Node environment
+backend_node_env: "development"
+
+# Auth provider
+backend_auth_provider: "cognito"
+
+# Values from Terraform outputs (set at runtime via extra-vars)
+# backend_s3_bucket_name: "{{ terraform_output_app_bucket_name }}"
+# backend_cloudfront_url: "{{ terraform_output_cloudfront_url }}"
+# backend_cognito_user_pool_id: "{{ terraform_output_user_pool_id }}"
+# backend_cognito_client_id: "{{ terraform_output_user_pool_client_id }}"
