@@ -72,6 +72,12 @@ cd Infra_Proyecto
 
 ```bash
 cd terraform/environments/dev
+terraform init -backend-config=backend.hcl
+```
+
+Opcionalmente, puedes pasar los valores del backend mediante variables de entorno en CI/CD:
+
+```bash
 terraform init \
   -backend-config="bucket=$TF_STATE_BUCKET" \
   -backend-config="key=dev/terraform.tfstate" \

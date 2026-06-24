@@ -101,28 +101,28 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_eip" "nat" {
-  count = var.single_nat_gateway ? 1 : 0
+  count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(var.availability_zones)) : 0
 
   domain = "vpc"
 
   tags = merge(
     local.common_tags,
     {
-      Name = "${var.name}-nat-eip"
+      Name = var.single_nat_gateway ? "${var.name}-nat-eip" : "${var.name}-nat-eip-${count.index}"
     }
   )
 }
 
 resource "aws_nat_gateway" "this" {
-  count = var.single_nat_gateway ? 1 : 0
+  count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(var.availability_zones)) : 0
 
   allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = aws_subnet.public[var.availability_zones[0]].id
+  subnet_id     = var.single_nat_gateway ? aws_subnet.public[var.availability_zones[0]].id : aws_subnet.public[var.availability_zones[count.index]].id
 
   tags = merge(
     local.common_tags,
     {
-      Name = "${var.name}-nat"
+      Name = var.single_nat_gateway ? "${var.name}-nat" : "${var.name}-nat-${count.index}"
     }
   )
 
@@ -146,10 +146,12 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table" "private" {
+  count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(var.availability_zones)) : 1
+
   vpc_id = aws_vpc.this.id
 
   dynamic "route" {
-    for_each = var.single_nat_gateway ? [aws_nat_gateway.this[0].id] : []
+    for_each = var.enable_nat_gateway ? [aws_nat_gateway.this[count.index].id] : []
     content {
       cidr_block     = "0.0.0.0/0"
       nat_gateway_id = route.value
@@ -159,7 +161,7 @@ resource "aws_route_table" "private" {
   tags = merge(
     local.common_tags,
     {
-      Name = "${var.name}-private-rt"
+      Name = var.enable_nat_gateway ? (var.single_nat_gateway ? "${var.name}-private-rt" : "${var.name}-private-rt-${count.index}") : "${var.name}-private-rt"
     }
   )
 }
@@ -175,5 +177,5 @@ resource "aws_route_table_association" "private" {
   for_each = aws_subnet.private
 
   subnet_id      = each.value.id
-  route_table_id = aws_route_table.private.id
+  route_table_id = var.enable_nat_gateway ? (var.single_nat_gateway ? aws_route_table.private[0].id : aws_route_table.private[each.key].id) : aws_route_table.private[0].id
 }
