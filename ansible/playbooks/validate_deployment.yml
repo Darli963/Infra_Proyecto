@@ -1,0 +1,128 @@
+---
+- name: Validate end-to-end deployment through CloudFront
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    validation_base_url: "https://{{ cloudfront_domain }}"
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.assert:
+        that:
+          - cloudfront_domain is defined
+          - cloudfront_domain | length > 0
+        fail_msg: "Required variable cloudfront_domain is not defined or is empty"
+
+  tasks:
+    - name: Verify backend health endpoint
+      ansible.builtin.uri:
+        url: "{{ validation_base_url }}/api/healthz"
+        method: GET
+        status_code: 200
+        return_content: true
+        follow_redirects: all
+      register: backend_health_response
+      changed_when: false
+
+    - name: Verify database connectivity endpoint when available
+      ansible.builtin.uri:
+        url: "{{ validation_base_url }}/api/db-check"
+        method: GET
+        status_code:
+          - 200
+          - 404
+        return_content: true
+        follow_redirects: all
+      register: database_check_response
+      changed_when: false
+      failed_when: database_check_response.status not in [200, 404]
+
+    - name: Report skipped optional database validation
+      ansible.builtin.debug:
+        msg: "Database connectivity endpoint /api/db-check is not exposed; skipping optional validation."
+      when: database_check_response.status == 404
+
+    - name: Verify frontend root loads
+      ansible.builtin.uri:
+        url: "{{ validation_base_url }}/"
+        method: GET
+        status_code: 200
+        return_content: true
+        follow_redirects: all
+        headers:
+          Accept: text/html
+      register: frontend_root_response
+      changed_when: false
+
+    - name: Assert frontend response is HTML
+      ansible.builtin.assert:
+        that:
+          - frontend_root_response.content is search('<html')
+          - "'text/html' in (frontend_root_response.content_type | default(''))"
+        fail_msg: "Frontend root did not return HTML content"
+
+    - name: Extract frontend asset references from HTML
+      ansible.builtin.set_fact:
+        frontend_asset_paths: >-
+          {{
+            frontend_root_response.content
+            | regex_findall("(?:src|href)=[\"']([^\"']+\\.(?:js|css|png|svg|ico|woff2?)(?:\\?[^\"']*)?)[\"']")
+          }}
+
+    - name: Select first asset reference
+      ansible.builtin.set_fact:
+        frontend_asset_path: >-
+          {{
+            (
+              frontend_asset_paths
+              | reject('match', '^data:')
+              | list
+              | first
+            ) | default('')
+          }}
+
+    - name: Fail when no frontend asset reference is present
+      ansible.builtin.fail:
+        msg: "No frontend asset references were found in the HTML returned by CloudFront."
+      when: frontend_asset_path | length == 0
+
+    - name: Build frontend asset validation URL
+      ansible.builtin.set_fact:
+        frontend_asset_url: >-
+          {{
+            frontend_asset_path
+            if (frontend_asset_path is match('^https?://'))
+            else (
+              validation_base_url ~
+              (
+                frontend_asset_path
+                if frontend_asset_path.startswith('/')
+                else '/' ~ frontend_asset_path
+              )
+            )
+          }}
+
+    - name: Verify S3 asset is accessible through CloudFront
+      ansible.builtin.uri:
+        url: "{{ frontend_asset_url }}"
+        method: GET
+        status_code: 200
+        follow_redirects: all
+      register: frontend_asset_response
+      changed_when: false
+
+    - name: Assert asset response is not HTML fallback content
+      ansible.builtin.assert:
+        that:
+          - "'text/html' not in (frontend_asset_response.content_type | default(''))"
+        fail_msg: "Asset URL resolved to HTML instead of a static asset."
+
+    - name: Display validation summary
+      ansible.builtin.debug:
+        msg:
+          - "Backend health validated at {{ validation_base_url }}/api/healthz"
+          - "Database validation status: {{ database_check_response.status }}"
+          - "Frontend HTML validated at {{ validation_base_url }}/"
+          - "Static asset validated at {{ frontend_asset_url }}"
