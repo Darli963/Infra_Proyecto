@@ -1,7 +1,0 @@
-- name: Desplegar la aplicacion Node.js
-  hosts: "{{ target_hosts | default('phase4_test') }}"
-  become: true
-  gather_facts: true
-
-  roles:
-    - role: app
