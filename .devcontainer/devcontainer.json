@@ -1,0 +1,29 @@
+{
+  "name": "Infra_Proyecto Codespaces",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "1.9.8"
+    },
+    "ghcr.io/devcontainers/features/aws-cli:1": {}
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "hashicorp.terraform",
+        "redhat.ansible",
+        "ms-python.python",
+        "amazonwebservices.aws-toolkit-vscode"
+      ],
+      "settings": {
+        "files.eol": "\n",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "remoteEnv": {
+    "AWS_REGION": "us-east-1",
+    "AWS_DEFAULT_REGION": "us-east-1"
+  }
+}
