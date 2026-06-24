@@ -1,0 +1,126 @@
+---
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - backend_aurora_secret_name is defined
+      - backend_aurora_secret_name | length > 0
+      - backend_s3_bucket_name is defined
+      - backend_s3_bucket_name | length > 0
+      - backend_cloudfront_url is defined
+      - backend_cloudfront_url | length > 0
+      - backend_cognito_user_pool_id is defined
+      - backend_cognito_user_pool_id | length > 0
+      - backend_cognito_client_id is defined
+      - backend_cognito_client_id | length > 0
+    fail_msg: "Required backend variables are not defined or empty"
+
+- name: Create application directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: ec2-user
+    group: ec2-user
+    mode: '0750'
+  loop:
+    - /opt/cotizacion-app/releases
+    - /opt/cotizacion-app/shared
+
+- name: Create release directory
+  ansible.builtin.file:
+    path: "{{ backend_release_path }}"
+    state: directory
+    owner: ec2-user
+    group: ec2-user
+    mode: '0750'
+
+- name: Copy backend application files
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ backend_release_path }}/{{ item.dest }}"
+    owner: ec2-user
+    group: ec2-user
+    mode: '0640'
+  loop:
+    - { src: "{{ backend_source_dir }}/dist/", dest: "dist/" }
+    - { src: "{{ backend_source_dir }}/start.js", dest: "start.js" }
+    - { src: "{{ backend_source_dir }}/package.json", dest: "package.json" }
+    - { src: "{{ backend_source_dir }}/package-lock.json", dest: "package-lock.json" }
+    - { src: "{{ backend_source_dir }}/prisma/", dest: "prisma/" }
+
+- name: Install npm dependencies
+  ansible.builtin.command:
+    cmd: npm ci --production
+    chdir: "{{ backend_release_path }}"
+  become: true
+  become_user: ec2-user
+
+- name: Generate Prisma client
+  ansible.builtin.command:
+    cmd: npx prisma generate
+    chdir: "{{ backend_release_path }}"
+  become: true
+  become_user: ec2-user
+
+- name: Fetch database credentials from Secrets Manager
+  ansible.builtin.command:
+    cmd: /usr/local/bin/phase4-fetch-secret {{ backend_aurora_secret_name }}
+  register: db_secret
+  changed_when: false
+  no_log: true
+
+- name: Set DATABASE_URL from secret
+  ansible.builtin.set_fact:
+    database_url: "{{ db_secret.stdout | from_json | json_query('DATABASE_URL') }}"
+  no_log: true
+
+- name: Run Prisma migrations
+  ansible.builtin.command:
+    cmd: npx prisma migrate deploy
+    chdir: "{{ backend_release_path }}"
+  environment:
+    DATABASE_URL: "{{ database_url }}"
+  become: true
+  become_user: ec2-user
+  changed_when: false
+  no_log: true
+
+- name: Update current symlink
+  ansible.builtin.file:
+    src: "{{ backend_release_path }}"
+    dest: /opt/cotizacion-app/current
+    state: link
+    owner: ec2-user
+    group: ec2-user
+
+- name: Create .env file
+  ansible.builtin.template:
+    src: backend.env.j2
+    dest: /opt/cotizacion-app/current/.env
+    owner: ec2-user
+    group: ec2-user
+    mode: '0600'
+  notify: restart cotizacion-app
+
+- name: Ensure cotizacion-app service is running
+  ansible.builtin.systemd:
+    name: cotizacion-app
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Wait for application to be ready
+  ansible.builtin.wait_for:
+    port: 3000
+    host: 127.0.0.1
+    delay: 5
+    timeout: 60
+
+- name: Verify application health
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3000/api/healthz
+    method: GET
+    status_code: 200
+  register: health_check
+  retries: 5
+  delay: 10
+  until: health_check.status == 200

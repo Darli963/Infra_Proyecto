@@ -1,0 +1,52 @@
+---
+- name: Deploy Cotizacion Backend Application
+  hosts: deploy_dev
+  become: true
+  
+  vars_files:
+    - inventory/group_vars/all.yml
+    - inventory/group_vars/deploy_dev.yml
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.assert:
+        that:
+          - backend_aurora_secret_name is defined
+          - backend_s3_bucket_name is defined
+          - backend_cloudfront_url is defined
+          - backend_cognito_user_pool_id is defined
+          - backend_cognito_client_id is defined
+        fail_msg: "Required variables are not defined. Pass them via -e or set in inventory."
+
+    - name: Check if backend source directory exists
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../api-sistema-cotizacion/backend"
+      register: backend_source
+      delegate_to: localhost
+      become: false
+
+    - name: Fail if backend source directory does not exist
+      ansible.builtin.fail:
+        msg: "Backend source directory not found at {{ playbook_dir }}/../api-sistema-cotizacion/backend"
+      when: not backend_source.stat.exists
+
+  roles:
+    - role: base
+    - role: node
+    - role: monitoring
+    - role: backend
+
+  post_tasks:
+    - name: Verify application health
+      ansible.builtin.uri:
+        url: http://127.0.0.1:3000/api/healthz
+        method: GET
+        status_code: 200
+      register: health_check
+      retries: 10
+      delay: 5
+      until: health_check.status == 200
+
+    - name: Display deployment status
+      ansible.builtin.debug:
+        msg: "Backend deployment successful. Health check passed."
