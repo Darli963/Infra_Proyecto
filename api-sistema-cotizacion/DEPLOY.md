@@ -112,29 +112,22 @@ npm run prisma:migrate:prod   # prisma migrate deploy
 
 ## 5. Desplegar backend con Ansible
 
-El playbook `deploy_app.yml` copia archivos, instala dependencias y gestiona
-systemd. Para apuntar al directorio de la aplicación de cotización:
+El playbook `deploy_backend.yml` copia archivos, instala dependencias, ejecuta
+migraciones de Prisma y gestiona systemd:
 
 ```bash
 export AWS_REGION=us-east-1
 
 ansible-playbook \
   -i ansible/inventory/aws_ec2.yml \
-  ansible/playbooks/deploy_app.yml \
-  -e phase4_aurora_secret_name="$AURORA_SECRET" \
-  -e phase4_app_root="/opt/cotizacion-app" \
-  -e phase4_service_name="cotizacion-app" \
-  -e "phase4_env_vars={
-    PORT: '3000',
-    NODE_ENV: 'production',
-    AWS_REGION: 'us-east-1',
-    AURORA_SECRET_NAME: '$AURORA_SECRET',
-    AUTH_PROVIDER: 'cognito',
-    COGNITO_USER_POOL_ID: '$COGNITO_POOL',
-    COGNITO_CLIENT_ID: '$COGNITO_CLIENT',
-    S3_BUCKET_NAME: '$S3_BUCKET',
-    CLOUDFRONT_URL: 'https://$CF_DOMAIN'
-  }"
+  ansible/playbooks/deploy_backend.yml \
+  -e target_hosts=deploy_dev \
+  -e backend_aurora_secret_name="$AURORA_SECRET" \
+  -e backend_s3_bucket_name="$S3_BUCKET" \
+  -e backend_cloudfront_url="https://$CF_DOMAIN" \
+  -e backend_aws_region="us-east-1" \
+  -e backend_cognito_user_pool_id="$COGNITO_POOL" \
+  -e backend_cognito_client_id="$COGNITO_CLIENT"
 ```
 
 > **Nota:** El rol `app` ejecuta `ExecStart=/usr/bin/node server.js`.
@@ -165,7 +158,24 @@ npm run build    # genera dist/
 
 ---
 
-## 7. Subir frontend a S3
+## 7. Desplegar frontend con Ansible
+
+El playbook `deploy_frontend.yml` construye y sube el frontend a S3:
+
+```bash
+export AWS_REGION=us-east-1
+
+ansible-playbook \
+  ansible/playbooks/deploy_frontend.yml \
+  -e frontend_cloudfront_domain="$CF_DOMAIN" \
+  -e frontend_cloudfront_distribution_id="$CF_DISTRIBUTION_ID" \
+  -e frontend_s3_bucket="$S3_BUCKET" \
+  -e frontend_aws_region="us-east-1" \
+  -e frontend_cognito_user_pool_id="$COGNITO_POOL" \
+  -e frontend_cognito_client_id="$COGNITO_CLIENT"
+```
+
+Alternativamente, subir manualmente a S3:
 
 ```bash
 aws s3 sync api-sistema-cotizacion/frontend/dist/ \
@@ -265,6 +275,21 @@ curl https://$CF_DOMAIN/api/public/risk-questions
 
 ---
 
+## GitHub Actions Secrets requeridos
+
+Para el workflow `.github/workflows/deploy_dev.yml`, configura las siguientes
+variables en el environment `dev` de GitHub Actions:
+
+| Variable | Descripción |
+|---|---|
+| `AWS_ROLE_ARN` | ARN del rol IAM para OIDC |
+| `TF_STATE_BUCKET` | Nombre del bucket S3 para estado Terraform |
+| `TF_LOCK_TABLE` | Nombre de la tabla DynamoDB para locks |
+| `ANSIBLE_AWS_SSM_BUCKET_NAME` | Bucket S3 para Ansible SSM |
+| `AWS_REGION` | Región AWS (default: us-east-1) |
+
+---
+
 ## Flujo completo resumido
 
 ```
@@ -273,10 +298,7 @@ terraform apply
     ├── obtener outputs (Aurora secret, S3, CloudFront, Cognito)
     ├── actualizar secreto app-config
     ├── npm run build  (backend)
-    ├── prisma migrate deploy
-    ├── ansible-playbook deploy_app.yml  (backend → EC2)
-    ├── npm run build  (frontend)
-    └── aws s3 sync  (frontend → S3)
-              │
-              └── curl /api/healthz ✓
+    ├── ansible-playbook deploy_backend.yml  (backend → EC2, incluye migraciones)
+    ├── ansible-playbook deploy_frontend.yml  (frontend → S3 + CloudFront)
+    └── curl /api/healthz ✓
 ```
