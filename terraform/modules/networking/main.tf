@@ -177,5 +177,5 @@ resource "aws_route_table_association" "private" {
   for_each = aws_subnet.private
 
   subnet_id      = each.value.id
-  route_table_id = var.enable_nat_gateway ? (var.single_nat_gateway ? aws_route_table.private[0].id : aws_route_table.private[index(var.availability_zones, each.value.az)].id) : aws_route_table.private[0].id
+  route_table_id = var.enable_nat_gateway ? (var.single_nat_gateway ? aws_route_table.private[0].id : aws_route_table.private[each.key].id) : aws_route_table.private[0].id
 }
