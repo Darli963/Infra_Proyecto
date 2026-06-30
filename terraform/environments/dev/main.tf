@@ -23,10 +23,9 @@ locals {
 module "audit" {
   source = "../../modules/audit"
 
-  enabled                        = var.enable_audit
-  name                           = local.name_prefix
-  log_bucket_name                = coalesce(var.audit_log_bucket_name, "${local.name_prefix}-audit-${data.aws_caller_identity.current.account_id}")
-  access_logs_target_bucket_name = module.storage.bucket_id
+  enabled         = var.enable_audit
+  name            = local.name_prefix
+  log_bucket_name = coalesce(var.audit_log_bucket_name, "${local.name_prefix}-audit-${data.aws_caller_identity.current.account_id}")
   tags = merge(
     local.common_tags,
     {
