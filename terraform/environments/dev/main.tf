@@ -20,6 +20,20 @@ locals {
   db_connect_resource_arns      = length(var.db_connect_resource_arns) > 0 ? var.db_connect_resource_arns : ["arn:aws:rds-db:${var.aws_region}:${data.aws_caller_identity.current.account_id}:dbuser:*/*"]
 }
 
+module "audit" {
+  source = "../../modules/audit"
+
+  enabled         = var.enable_audit
+  name            = local.name_prefix
+  log_bucket_name = coalesce(var.audit_log_bucket_name, "${local.name_prefix}-audit-${data.aws_caller_identity.current.account_id}")
+  tags = merge(
+    local.common_tags,
+    {
+      Tier = "audit"
+    }
+  )
+}
+
 data "aws_rds_cluster" "express" {
   count = var.database_mode == "express" ? 1 : 0
 

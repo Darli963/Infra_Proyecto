@@ -182,3 +182,48 @@ output "observability_alarm_names" {
   description = "Nombres de las alarmas activas de observabilidad."
   value       = module.observability.alarm_names
 }
+
+output "audit_log_bucket_name" {
+  description = "Nombre del bucket S3 donde se almacenan los logs de auditoria."
+  value       = module.audit.log_bucket_name
+}
+
+output "audit_log_bucket_arn" {
+  description = "ARN del bucket S3 donde se almacenan los logs de auditoria."
+  value       = module.audit.log_bucket_arn
+}
+
+output "cloudtrail_trail_arn" {
+  description = "ARN del Trail de CloudTrail."
+  value       = module.audit.cloudtrail_arn
+}
+
+output "aws_config_recorder_name" {
+  description = "Nombre del Configuration Recorder de AWS Config."
+  value       = module.audit.config_recorder_name
+}
+
+output "storage_bucket_name" {
+  description = "Nombre del bucket S3 usado por workflows y playbooks."
+  value       = module.storage.bucket_id
+}
+
+output "cloudfront_distribution_domain_name" {
+  description = "Dominio generado por CloudFront usado por workflows y validaciones."
+  value       = module.perimeter.cloudfront_domain_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "ID de la distribucion CloudFront usada por workflows y playbooks."
+  value       = module.perimeter.cloudfront_distribution_id
+}
+
+output "cognito_user_pool_id" {
+  description = "ID del User Pool de Cognito usado por workflows y frontend."
+  value       = var.enable_auth ? module.auth[0].user_pool_id : null
+}
+
+output "cognito_client_id" {
+  description = "ID del cliente del User Pool de Cognito usado por workflows y frontend."
+  value       = var.enable_auth ? module.auth[0].user_pool_client_id : null
+}

@@ -1,98 +1,69 @@
 # Infra_Proyecto
 
-Guía operativa para desplegar el entorno `dev` usando `Terraform` y `Ansible`.
+Guía operativa para desplegar el entorno `dev` usando `Terraform` y `Ansible` (flujo recomendado en GitHub Codespaces).
 
-## Flujo de despliegue
+## Qué incluye DEV
 
-El flujo soportado para este repositorio es:
+- Red: VPC, subnets públicas/privadas, IGW, NAT (single), rutas
+- Entrada: ALB + Target Group
+- API: API Gateway (HTTP API) + VPC Link
+- Perímetro: CloudFront + WAF
+- Compute: Auto Scaling Group (privado) + instancia de prueba (privada) para fase 4
+- Datos: Aurora (gestionada por Terraform), Redis (ElastiCache)
+- Storage: S3 (assets/artefactos) + lifecycle hacia Glacier
+- Observabilidad: CloudWatch log groups + alarmas + SNS
+- Auditoría/Compliance: CloudTrail + AWS Config (logs cifrados en S3 con KMS)
 
-1. Abrir el repositorio en GitHub Codespaces.
-2. Configurar credenciales AWS en el Codespace.
-3. Exportar variables requeridas.
-4. Ejecutar el script `scripts/codespaces_deploy_dev.sh`.
-5. Validar el endpoint publicado en CloudFront.
+## Auditoría / Compliance (CloudTrail + AWS Config)
 
-## Entorno de ejecución
+El entorno `dev` incluye una capa de auditoría:
+- CloudTrail (multi-region) para eventos de gestión y eventos globales
+- AWS Config (configuration recorder + delivery channel)
+- Logs en S3 cifrados con KMS (bucket dedicado de auditoría)
 
-Usa GitHub Codespaces.
+Outputs relevantes (Terraform):
+- `audit_log_bucket_name`
+- `cloudtrail_trail_arn`
+- `aws_config_recorder_name`
 
-Este repositorio incluye `.devcontainer/` para preparar automáticamente:
-- `Terraform`
-- `AWS CLI`
-- `Ansible`
-- colecciones de `ansible/requirements.yml`
-- `session-manager-plugin`
+## Base de datos (Aurora gestionada por Terraform)
 
-## Credenciales y datos requeridos
+En `dev` Aurora se crea dentro del stack (no depende de clúster/secreto externos).
 
-Hay datos que no deben subirse al repositorio por seguridad. Debes cargarlos en tu entorno antes del despliegue.
+Outputs relevantes (Terraform):
+- `aurora_endpoint`
+- `aurora_secret_name`
 
-Necesitas:
-- credenciales AWS válidas en el Codespace
-- `AWS_REGION`
-- `AWS_DEFAULT_REGION`
-- `TF_STATE_BUCKET`
-- `TF_LOCK_TABLE`
-- `ANSIBLE_AWS_SSM_BUCKET_NAME`
+## Cómo desplegar DEV (Codespaces)
 
-Ejemplo de variables requeridas:
+### Ejecución (recomendado)
 
-```bash
-export AWS_REGION="us-east-1"
-export AWS_DEFAULT_REGION="us-east-1"
-export TF_STATE_BUCKET="infra-proyecto-tfstate-darli963"
-export TF_LOCK_TABLE="infra-proyecto-tf-locks"
-export ANSIBLE_AWS_SSM_BUCKET_NAME="infra-proyecto-dev-terraform-state"
-```
-
-## Ejecución
-
-### 1. Abrir Codespaces
-
-Abre el repositorio en la rama `develop` usando GitHub Codespaces.
-
-### 2. Configurar credenciales AWS
-
-Configura tus credenciales AWS dentro del Codespace con el método autorizado por tu equipo.
-
-Verifica acceso:
+1) Configura credenciales AWS en el Codespace y verifica acceso:
 
 ```bash
 aws sts get-caller-identity
 ```
 
-### 3. Exportar variables
-
-Usa las variables necesarias para el despliegue:
+2) Exporta variables del backend remoto:
 
 ```bash
 export AWS_REGION="us-east-1"
 export AWS_DEFAULT_REGION="us-east-1"
 export TF_STATE_BUCKET="infra-proyecto-tfstate-darli963"
 export TF_LOCK_TABLE="infra-proyecto-tf-locks"
-export ANSIBLE_AWS_SSM_BUCKET_NAME="infra-proyecto-dev-terraform-state"
 ```
 
-### 4. Ejecutar despliegue
+3) Ejecuta el despliegue end-to-end:
 
 ```bash
 bash scripts/codespaces_deploy_dev.sh
 ```
 
-Este script ejecuta:
-- `terraform init`
-- `terraform validate`
-- `terraform apply`
-- `ansible/playbooks/bootstrap.yml`
-- `ansible/playbooks/deploy_backend.yml`
-- `ansible/playbooks/deploy_frontend.yml`
-- `ansible/playbooks/validate_deployment.yml`
+Este script aplica Terraform y ejecuta playbooks Ansible (bootstrap, backend, frontend y validación).
 
-### 5. Validar despliegue
+### Validación
 
-Al finalizar, el script imprime la URL del health check.
-
-Formato esperado:
+Formato esperado del health check:
 
 ```bash
 https://<cloudfront_domain>/api/healthz
@@ -103,6 +74,53 @@ También puedes validarlo manualmente:
 ```bash
 curl -f "https://<cloudfront_domain>/api/healthz"
 ```
+
+## Despliegue DEV (manual)
+
+Terraform:
+
+```bash
+terraform fmt -check -recursive terraform
+
+terraform -chdir=terraform/environments/dev init -reconfigure \
+  -backend-config="bucket=${TF_STATE_BUCKET}" \
+  -backend-config="key=dev/terraform.tfstate" \
+  -backend-config="region=${AWS_REGION}" \
+  -backend-config="dynamodb_table=${TF_LOCK_TABLE}" \
+  -backend-config="encrypt=true"
+
+terraform -chdir=terraform/environments/dev validate
+terraform -chdir=terraform/environments/dev apply -input=false -auto-approve -var-file="dev.tfvars"
+```
+
+Ansible (instala colecciones y ejecuta playbooks):
+
+```bash
+ansible-galaxy collection install -r ansible/requirements.yml
+
+export ANSIBLE_AWS_SSM_BUCKET_NAME="$(terraform -chdir=terraform/environments/dev output -raw storage_bucket_name)"
+
+ansible-playbook -i ansible/inventory/aws_ec2.yml ansible/playbooks/bootstrap.yml -e target_hosts=deploy_dev
+ansible-playbook -i ansible/inventory/aws_ec2.yml ansible/playbooks/deploy_backend.yml -e target_hosts=deploy_dev
+ansible-playbook ansible/playbooks/deploy_frontend.yml
+ansible-playbook ansible/playbooks/validate_deployment.yml
+```
+
+## CI/CD (GitHub Actions)
+
+El workflow [deploy_dev.yml](file:///Users/dmedinasix/Desktop/Infra_Proyecto/.github/workflows/deploy_dev.yml) aplica Terraform y despliega la app con Ansible.
+
+Requiere variables en GitHub Actions environment `dev`:
+- `AWS_ROLE_ARN`
+- `TF_STATE_BUCKET`
+- `TF_LOCK_TABLE`
+- `AWS_REGION` (opcional; default `us-east-1`)
+
+## Troubleshooting
+
+- `terraform init` falla por backend: valida `TF_STATE_BUCKET` y `TF_LOCK_TABLE`.
+- Outputs no encontrados en deploy: ejecuta `terraform output -json` y verifica que existan `storage_bucket_name` y `cloudfront_distribution_domain_name`.
+- Fallos de Ansible en SSM: valida que la instancia esté `Online` en Session Manager y que el rol EC2 tenga `AmazonSSMManagedInstanceCore`.
 
 ## Referencia
 

@@ -2,6 +2,9 @@ aws_region   = "us-east-1"
 project_name = "infra-proyecto"
 environment  = "dev"
 
+# Auditoria / Compliance
+enable_audit = true
+
 # Networking
 vpc_cidr                = "10.0.0.0/16"
 availability_zones      = ["us-east-1a", "us-east-1b"]
@@ -20,7 +23,7 @@ alb_ingress_use_cloudfront_prefix_list = true
 ec2_ingress_ports                      = [3000]
 aurora_port                            = 5432
 redis_port                             = 6379
-external_database_egress_cidrs         = ["0.0.0.0/0"]
+external_database_egress_cidrs         = []
 
 # Storage
 app_bucket_name           = "infra-proyecto-dev-storage-phase3-example"
@@ -28,21 +31,19 @@ bucket_versioning_enabled = true
 bucket_force_destroy      = false
 
 # Database
-database_mode                      = "express"
-external_aurora_cluster_identifier = "database-1"
-external_aurora_secret_name        = "infra-proyecto/dev/aurora-new"
-db_name                            = "postgres"
-db_master_username                 = "postgres"
-db_engine                          = "aurora-postgresql"
-db_instance_class                  = "db.t3.medium"
-db_instance_count                  = 1
-db_backup_retention_period         = 1
-db_preferred_backup_window         = "03:00-04:00"
-db_preferred_maintenance_window    = "sun:04:00-sun:05:00"
-db_skip_final_snapshot             = true
-db_deletion_protection             = false
-db_apply_immediately               = true
-db_secret_name                     = "infra-proyecto/dev/aurora"
+database_mode                   = "standard"
+db_name                         = "postgres"
+db_master_username              = "postgres"
+db_engine                       = "aurora-postgresql"
+db_instance_class               = "db.t3.medium"
+db_instance_count               = 1
+db_backup_retention_period      = 1
+db_preferred_backup_window      = "03:00-04:00"
+db_preferred_maintenance_window = "sun:04:00-sun:05:00"
+db_skip_final_snapshot          = true
+db_deletion_protection          = false
+db_apply_immediately            = true
+db_secret_name                  = "infra-proyecto/dev/aurora"
 
 # Cache opcional
 enable_redis             = true
