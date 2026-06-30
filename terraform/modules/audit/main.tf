@@ -147,7 +147,7 @@ resource "aws_s3_bucket_policy" "audit_access_logs" {
         ]
         Condition = {
           Bool = {
-            "aws:SecureTransport" = "false"
+            "aws:SecureTransport" = false
           }
         }
       },
@@ -176,6 +176,14 @@ resource "aws_s3_bucket_policy" "audit_access_logs" {
       }
     ]
   })
+}
+
+resource "aws_s3_bucket_logging" "audit_access_logs" {
+  count = var.enabled ? 1 : 0
+
+  bucket        = aws_s3_bucket.audit_access_logs[0].id
+  target_bucket = aws_s3_bucket.audit_access_logs[0].id
+  target_prefix = "s3-access-logs/"
 }
 
 resource "aws_s3_bucket_versioning" "audit_logs" {
@@ -237,7 +245,7 @@ resource "aws_s3_bucket_policy" "audit_logs" {
         ]
         Condition = {
           Bool = {
-            "aws:SecureTransport" = "false"
+            "aws:SecureTransport" = false
           }
         }
       },
