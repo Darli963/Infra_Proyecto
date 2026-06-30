@@ -127,8 +127,8 @@ resource "aws_s3_bucket_policy" "audit_logs" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AWSCloudTrailAclCheck"
-        Effect   = "Allow"
+        Sid    = "AWSCloudTrailAclCheck"
+        Effect = "Allow"
         Principal = {
           Service = "cloudtrail.amazonaws.com"
         }
@@ -136,8 +136,8 @@ resource "aws_s3_bucket_policy" "audit_logs" {
         Resource = aws_s3_bucket.audit_logs[0].arn
       },
       {
-        Sid      = "AWSCloudTrailWrite"
-        Effect   = "Allow"
+        Sid    = "AWSCloudTrailWrite"
+        Effect = "Allow"
         Principal = {
           Service = "cloudtrail.amazonaws.com"
         }
@@ -150,8 +150,8 @@ resource "aws_s3_bucket_policy" "audit_logs" {
         }
       },
       {
-        Sid      = "AWSConfigAclCheck"
-        Effect   = "Allow"
+        Sid    = "AWSConfigAclCheck"
+        Effect = "Allow"
         Principal = {
           Service = "config.amazonaws.com"
         }
@@ -159,8 +159,8 @@ resource "aws_s3_bucket_policy" "audit_logs" {
         Resource = aws_s3_bucket.audit_logs[0].arn
       },
       {
-        Sid      = "AWSConfigWrite"
-        Effect   = "Allow"
+        Sid    = "AWSConfigWrite"
+        Effect = "Allow"
         Principal = {
           Service = "config.amazonaws.com"
         }

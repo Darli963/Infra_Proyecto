@@ -31,19 +31,19 @@ bucket_versioning_enabled = true
 bucket_force_destroy      = false
 
 # Database
-database_mode                      = "standard"
-db_name                            = "postgres"
-db_master_username                 = "postgres"
-db_engine                          = "aurora-postgresql"
-db_instance_class                  = "db.t3.medium"
-db_instance_count                  = 1
-db_backup_retention_period         = 1
-db_preferred_backup_window         = "03:00-04:00"
-db_preferred_maintenance_window    = "sun:04:00-sun:05:00"
-db_skip_final_snapshot             = true
-db_deletion_protection             = false
-db_apply_immediately               = true
-db_secret_name                     = "infra-proyecto/dev/aurora"
+database_mode                   = "standard"
+db_name                         = "postgres"
+db_master_username              = "postgres"
+db_engine                       = "aurora-postgresql"
+db_instance_class               = "db.t3.medium"
+db_instance_count               = 1
+db_backup_retention_period      = 1
+db_preferred_backup_window      = "03:00-04:00"
+db_preferred_maintenance_window = "sun:04:00-sun:05:00"
+db_skip_final_snapshot          = true
+db_deletion_protection          = false
+db_apply_immediately            = true
+db_secret_name                  = "infra-proyecto/dev/aurora"
 
 # Cache opcional
 enable_redis             = true
