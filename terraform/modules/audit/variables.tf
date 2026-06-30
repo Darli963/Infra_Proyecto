@@ -14,13 +14,6 @@ variable "log_bucket_name" {
   type        = string
 }
 
-variable "access_logs_target_bucket_name" {
-  description = "Nombre del bucket S3 destino para server access logs del bucket de auditoria."
-  type        = string
-  default     = null
-  nullable    = true
-}
-
 variable "cloudtrail_is_multi_region" {
   description = "Si CloudTrail debe capturar eventos en multiples regiones."
   type        = bool

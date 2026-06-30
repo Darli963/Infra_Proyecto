@@ -90,7 +90,7 @@ resource "aws_s3_bucket" "audit_logs" {
 }
 
 resource "aws_s3_bucket" "audit_access_logs" {
-  count = var.enabled && var.access_logs_target_bucket_name == null ? 1 : 0
+  count = var.enabled ? 1 : 0
 
   bucket        = local.access_log_bucket_name
   force_destroy = false
@@ -98,7 +98,7 @@ resource "aws_s3_bucket" "audit_access_logs" {
 }
 
 resource "aws_s3_bucket_versioning" "audit_access_logs" {
-  count = var.enabled && var.access_logs_target_bucket_name == null ? 1 : 0
+  count = var.enabled ? 1 : 0
 
   bucket = aws_s3_bucket.audit_access_logs[0].id
   versioning_configuration {
@@ -107,7 +107,7 @@ resource "aws_s3_bucket_versioning" "audit_access_logs" {
 }
 
 resource "aws_s3_bucket_public_access_block" "audit_access_logs" {
-  count = var.enabled && var.access_logs_target_bucket_name == null ? 1 : 0
+  count = var.enabled ? 1 : 0
 
   bucket                  = aws_s3_bucket.audit_access_logs[0].id
   block_public_acls       = true
@@ -117,7 +117,7 @@ resource "aws_s3_bucket_public_access_block" "audit_access_logs" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "audit_access_logs" {
-  count = var.enabled && var.access_logs_target_bucket_name == null ? 1 : 0
+  count = var.enabled ? 1 : 0
 
   bucket = aws_s3_bucket.audit_access_logs[0].id
   rule {
@@ -128,7 +128,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "audit_access_logs
 }
 
 data "aws_iam_policy_document" "audit_access_logs" {
-  count = var.enabled && var.access_logs_target_bucket_name == null ? 1 : 0
+  count = var.enabled ? 1 : 0
 
   statement {
     sid    = "DenyInsecureTransport"
@@ -186,14 +186,14 @@ data "aws_iam_policy_document" "audit_access_logs" {
 }
 
 resource "aws_s3_bucket_policy" "audit_access_logs" {
-  count = var.enabled && var.access_logs_target_bucket_name == null ? 1 : 0
+  count = var.enabled ? 1 : 0
 
   bucket = aws_s3_bucket.audit_access_logs[0].id
   policy = data.aws_iam_policy_document.audit_access_logs[0].json
 }
 
 resource "aws_s3_bucket_logging" "audit_access_logs" {
-  count = var.enabled && var.access_logs_target_bucket_name == null ? 1 : 0
+  count = var.enabled ? 1 : 0
 
   bucket        = aws_s3_bucket.audit_access_logs[0].id
   target_bucket = aws_s3_bucket.audit_access_logs[0].id
@@ -235,7 +235,7 @@ resource "aws_s3_bucket_logging" "audit_logs" {
   count = var.enabled ? 1 : 0
 
   bucket        = aws_s3_bucket.audit_logs[0].id
-  target_bucket = coalesce(var.access_logs_target_bucket_name, aws_s3_bucket.audit_access_logs[0].id)
+  target_bucket = aws_s3_bucket.audit_access_logs[0].id
   target_prefix = "s3-access-logs/"
 }
 
