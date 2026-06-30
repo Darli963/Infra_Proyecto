@@ -23,7 +23,7 @@ alb_ingress_use_cloudfront_prefix_list = true
 ec2_ingress_ports                      = [3000]
 aurora_port                            = 5432
 redis_port                             = 6379
-external_database_egress_cidrs         = ["0.0.0.0/0"]
+external_database_egress_cidrs         = []
 
 # Storage
 app_bucket_name           = "infra-proyecto-dev-storage-phase3-example"
@@ -31,9 +31,7 @@ bucket_versioning_enabled = true
 bucket_force_destroy      = false
 
 # Database
-database_mode                      = "express"
-external_aurora_cluster_identifier = "database-1"
-external_aurora_secret_name        = "infra-proyecto/dev/aurora-new"
+database_mode                      = "standard"
 db_name                            = "postgres"
 db_master_username                 = "postgres"
 db_engine                          = "aurora-postgresql"
