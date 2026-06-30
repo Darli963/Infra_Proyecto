@@ -14,9 +14,8 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
-  common_tags            = merge({ Module = "audit" }, var.tags)
-  account_id             = data.aws_caller_identity.current.account_id
-  access_log_bucket_name = trim(lower(substr("${var.log_bucket_name}-access-logs", 0, 63)), "-")
+  common_tags = merge({ Module = "audit" }, var.tags)
+  account_id  = data.aws_caller_identity.current.account_id
 }
 
 resource "aws_kms_key" "audit_logs" {
@@ -89,103 +88,6 @@ resource "aws_s3_bucket" "audit_logs" {
   tags          = merge(local.common_tags, { Name = var.log_bucket_name })
 }
 
-resource "aws_s3_bucket" "audit_access_logs" {
-  count = var.enabled ? 1 : 0
-
-  bucket        = local.access_log_bucket_name
-  force_destroy = false
-  tags          = merge(local.common_tags, { Name = local.access_log_bucket_name })
-}
-
-resource "aws_s3_bucket_versioning" "audit_access_logs" {
-  count = var.enabled ? 1 : 0
-
-  bucket = aws_s3_bucket.audit_access_logs[0].id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
-resource "aws_s3_bucket_public_access_block" "audit_access_logs" {
-  count = var.enabled ? 1 : 0
-
-  bucket                  = aws_s3_bucket.audit_access_logs[0].id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "audit_access_logs" {
-  count = var.enabled ? 1 : 0
-
-  bucket = aws_s3_bucket.audit_access_logs[0].id
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_policy" "audit_access_logs" {
-  count = var.enabled ? 1 : 0
-
-  bucket = aws_s3_bucket.audit_access_logs[0].id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "DenyInsecureTransport"
-        Effect = "Deny"
-        Principal = {
-          AWS = "*"
-        }
-        Action = "s3:*"
-        Resource = [
-          aws_s3_bucket.audit_access_logs[0].arn,
-          "${aws_s3_bucket.audit_access_logs[0].arn}/*"
-        ]
-        Condition = {
-          Bool = {
-            "aws:SecureTransport" = false
-          }
-        }
-      },
-      {
-        Sid    = "S3LogDeliveryAclCheck"
-        Effect = "Allow"
-        Principal = {
-          Service = "logging.s3.amazonaws.com"
-        }
-        Action   = "s3:GetBucketAcl"
-        Resource = aws_s3_bucket.audit_access_logs[0].arn
-      },
-      {
-        Sid    = "S3LogDeliveryWrite"
-        Effect = "Allow"
-        Principal = {
-          Service = "logging.s3.amazonaws.com"
-        }
-        Action   = "s3:PutObject"
-        Resource = "${aws_s3_bucket.audit_access_logs[0].arn}/*"
-        Condition = {
-          StringEquals = {
-            "s3:x-amz-acl" = "bucket-owner-full-control"
-          }
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_s3_bucket_logging" "audit_access_logs" {
-  count = var.enabled ? 1 : 0
-
-  bucket        = aws_s3_bucket.audit_access_logs[0].id
-  target_bucket = aws_s3_bucket.audit_access_logs[0].id
-  target_prefix = "s3-access-logs/"
-}
-
 resource "aws_s3_bucket_versioning" "audit_logs" {
   count = var.enabled ? 1 : 0
 
@@ -221,7 +123,7 @@ resource "aws_s3_bucket_logging" "audit_logs" {
   count = var.enabled ? 1 : 0
 
   bucket        = aws_s3_bucket.audit_logs[0].id
-  target_bucket = aws_s3_bucket.audit_access_logs[0].id
+  target_bucket = var.access_logs_target_bucket_name
   target_prefix = "s3-access-logs/"
 }
 
@@ -245,7 +147,7 @@ resource "aws_s3_bucket_policy" "audit_logs" {
         ]
         Condition = {
           Bool = {
-            "aws:SecureTransport" = false
+            "aws:SecureTransport" = "false"
           }
         }
       },
