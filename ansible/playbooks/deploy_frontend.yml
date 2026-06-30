@@ -5,7 +5,7 @@
   gather_facts: false
 
   vars:
-    frontend_source_dir: "{{ playbook_dir }}/../api-sistema-cotizacion/frontend"
+    frontend_source_dir: "{{ playbook_dir }}/../../api-sistema-cotizacion/frontend"
     frontend_dist_dir: "{{ frontend_source_dir }}/dist"
 
   pre_tasks:
