@@ -36,16 +36,15 @@ Outputs relevantes (Terraform):
 
 ## Cómo desplegar DEV (Codespaces)
 
-### Prerrequisitos
+### Ejecución (recomendado)
 
-- Terraform `1.9.8` (o compatible con el repo)
-- AWS CLI
-- Credenciales AWS válidas en el Codespace (método autorizado por tu equipo)
-- Backend remoto de Terraform (S3 + DynamoDB):
-  - `TF_STATE_BUCKET`
-  - `TF_LOCK_TABLE`
-- Variables para Ansible (SSM):
-  - `ANSIBLE_AWS_SSM_BUCKET_NAME` (usa el bucket de app de Terraform: `storage_bucket_name`)
+1) Configura credenciales AWS en el Codespace y verifica acceso:
+
+```bash
+aws sts get-caller-identity
+```
+
+2) Exporta variables del backend remoto:
 
 ```bash
 export AWS_REGION="us-east-1"
@@ -54,19 +53,13 @@ export TF_STATE_BUCKET="infra-proyecto-tfstate-darli963"
 export TF_LOCK_TABLE="infra-proyecto-tf-locks"
 ```
 
-Verifica acceso a AWS:
-
-```bash
-aws sts get-caller-identity
-```
-
-### Ejecución (script)
+3) Ejecuta el despliegue end-to-end:
 
 ```bash
 bash scripts/codespaces_deploy_dev.sh
 ```
 
-El script aplica Terraform y ejecuta playbooks Ansible para bootstrap, backend, frontend y validación.
+Este script aplica Terraform y ejecuta playbooks Ansible (bootstrap, backend, frontend y validación).
 
 ### Validación
 
@@ -82,7 +75,7 @@ También puedes validarlo manualmente:
 curl -f "https://<cloudfront_domain>/api/healthz"
 ```
 
-## Despliegue DEV (manual, sin script)
+## Despliegue DEV (manual)
 
 Terraform:
 
