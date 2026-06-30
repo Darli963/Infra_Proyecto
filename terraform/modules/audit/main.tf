@@ -14,8 +14,10 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
-  common_tags = merge({ Module = "audit" }, var.tags)
-  account_id  = data.aws_caller_identity.current.account_id
+  common_tags              = merge({ Module = "audit" }, var.tags)
+  account_id               = data.aws_caller_identity.current.account_id
+  audit_bucket_arn         = "arn:${data.aws_partition.current.partition}:s3:::${var.log_bucket_name}"
+  audit_bucket_objects_arn = "arn:${data.aws_partition.current.partition}:s3:::${var.log_bucket_name}/*"
 }
 
 resource "aws_kms_key" "audit_logs" {
@@ -127,78 +129,99 @@ resource "aws_s3_bucket_logging" "audit_logs" {
   target_prefix = "s3-access-logs/"
 }
 
+data "aws_iam_policy_document" "audit_logs" {
+  statement {
+    sid    = "DenyInsecureTransport"
+    effect = "Deny"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+
+    actions = ["s3:*"]
+    resources = [
+      local.audit_bucket_arn,
+      local.audit_bucket_objects_arn
+    ]
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+
+  statement {
+    sid    = "AWSCloudTrailAclCheck"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudtrail.amazonaws.com"]
+    }
+
+    actions   = ["s3:GetBucketAcl"]
+    resources = [local.audit_bucket_arn]
+  }
+
+  statement {
+    sid    = "AWSCloudTrailWrite"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudtrail.amazonaws.com"]
+    }
+
+    actions   = ["s3:PutObject"]
+    resources = ["${local.audit_bucket_arn}/AWSLogs/${local.account_id}/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+      values   = ["bucket-owner-full-control"]
+    }
+  }
+
+  statement {
+    sid    = "AWSConfigAclCheck"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["config.amazonaws.com"]
+    }
+
+    actions   = ["s3:GetBucketAcl"]
+    resources = [local.audit_bucket_arn]
+  }
+
+  statement {
+    sid    = "AWSConfigWrite"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["config.amazonaws.com"]
+    }
+
+    actions   = ["s3:PutObject"]
+    resources = ["${local.audit_bucket_arn}/AWSLogs/${local.account_id}/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+      values   = ["bucket-owner-full-control"]
+    }
+  }
+}
+
 resource "aws_s3_bucket_policy" "audit_logs" {
   count = var.enabled ? 1 : 0
 
   bucket = aws_s3_bucket.audit_logs[0].id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "DenyInsecureTransport"
-        Effect = "Deny"
-        Principal = {
-          AWS = "*"
-        }
-        Action = "s3:*"
-        Resource = [
-          aws_s3_bucket.audit_logs[0].arn,
-          "${aws_s3_bucket.audit_logs[0].arn}/*"
-        ]
-        Condition = {
-          Bool = {
-            "aws:SecureTransport" = "false"
-          }
-        }
-      },
-      {
-        Sid    = "AWSCloudTrailAclCheck"
-        Effect = "Allow"
-        Principal = {
-          Service = "cloudtrail.amazonaws.com"
-        }
-        Action   = "s3:GetBucketAcl"
-        Resource = aws_s3_bucket.audit_logs[0].arn
-      },
-      {
-        Sid    = "AWSCloudTrailWrite"
-        Effect = "Allow"
-        Principal = {
-          Service = "cloudtrail.amazonaws.com"
-        }
-        Action   = "s3:PutObject"
-        Resource = "${aws_s3_bucket.audit_logs[0].arn}/AWSLogs/${local.account_id}/*"
-        Condition = {
-          StringEquals = {
-            "s3:x-amz-acl" = "bucket-owner-full-control"
-          }
-        }
-      },
-      {
-        Sid    = "AWSConfigAclCheck"
-        Effect = "Allow"
-        Principal = {
-          Service = "config.amazonaws.com"
-        }
-        Action   = "s3:GetBucketAcl"
-        Resource = aws_s3_bucket.audit_logs[0].arn
-      },
-      {
-        Sid    = "AWSConfigWrite"
-        Effect = "Allow"
-        Principal = {
-          Service = "config.amazonaws.com"
-        }
-        Action   = "s3:PutObject"
-        Resource = "${aws_s3_bucket.audit_logs[0].arn}/AWSLogs/${local.account_id}/*"
-        Condition = {
-          StringEquals = {
-            "s3:x-amz-acl" = "bucket-owner-full-control"
-          }
-        }
-      }
-    ]
-  })
+  policy = data.aws_iam_policy_document.audit_logs.json
 }
 
 resource "aws_cloudtrail" "this" {
