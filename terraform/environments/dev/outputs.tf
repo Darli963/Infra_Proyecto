@@ -182,3 +182,23 @@ output "observability_alarm_names" {
   description = "Nombres de las alarmas activas de observabilidad."
   value       = module.observability.alarm_names
 }
+
+output "audit_log_bucket_name" {
+  description = "Nombre del bucket S3 donde se almacenan los logs de auditoria."
+  value       = module.audit.log_bucket_name
+}
+
+output "audit_log_bucket_arn" {
+  description = "ARN del bucket S3 donde se almacenan los logs de auditoria."
+  value       = module.audit.log_bucket_arn
+}
+
+output "cloudtrail_trail_arn" {
+  description = "ARN del Trail de CloudTrail."
+  value       = module.audit.cloudtrail_arn
+}
+
+output "aws_config_recorder_name" {
+  description = "Nombre del Configuration Recorder de AWS Config."
+  value       = module.audit.config_recorder_name
+}

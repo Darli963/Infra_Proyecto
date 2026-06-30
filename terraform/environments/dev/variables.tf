@@ -26,6 +26,21 @@ variable "common_tags" {
   default     = {}
 }
 
+# --- Auditoria / Compliance ---
+
+variable "enable_audit" {
+  description = "Habilita CloudTrail y AWS Config para auditoria/compliance."
+  type        = bool
+  default     = true
+}
+
+variable "audit_log_bucket_name" {
+  description = "Nombre globalmente unico del bucket S3 donde se almacenan los logs de auditoria."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
 # --- Networking ---
 
 variable "vpc_cidr" {
