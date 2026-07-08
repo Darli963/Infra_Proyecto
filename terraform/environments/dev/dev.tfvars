@@ -11,7 +11,7 @@ availability_zones      = ["us-east-1a", "us-east-1b"]
 public_subnet_cidrs     = ["10.0.1.0/24", "10.0.2.0/24"]
 private_subnet_cidrs    = ["10.0.10.0/24", "10.0.11.0/24"]
 map_public_ip_on_launch = true
-single_nat_gateway      = true
+single_nat_gateway      = false
 
 # Security Groups
 # NOTA: alb_ingress_cidrs NO se aplica cuando alb_ingress_use_cloudfront_prefix_list = true.
@@ -36,7 +36,7 @@ db_name                         = "postgres"
 db_master_username              = "postgres"
 db_engine                       = "aurora-postgresql"
 db_instance_class               = "db.t3.medium"
-db_instance_count               = 1
+db_instance_count               = 2
 db_backup_retention_period      = 1
 db_preferred_backup_window      = "03:00-04:00"
 db_preferred_maintenance_window = "sun:04:00-sun:05:00"
@@ -88,7 +88,7 @@ autoscaling_health_check_grace_period  = 180
 
 # API Gateway
 enable_api_gateway    = true
-enable_jwt_authorizer = false
+enable_jwt_authorizer = true
 
 # Auth (Cognito)
 enable_auth = true
@@ -104,6 +104,10 @@ perimeter_enable_acm_certificate = false
 perimeter_manage_route53_records = false
 perimeter_route53_zone_id        = null
 perimeter_price_class            = "PriceClass_100"
+perimeter_enable_rate_limit      = true
+perimeter_rate_limit_requests    = 1000
+perimeter_geo_allowlist_enabled  = true
+perimeter_allowed_country_codes  = ["PE"]
 # Observabilidad
 observability_sns_email_endpoint    = "dali0987654321@gmail.com"
 observability_log_retention_in_days = 14

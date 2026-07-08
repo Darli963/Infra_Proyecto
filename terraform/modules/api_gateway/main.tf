@@ -10,7 +10,9 @@ terraform {
 }
 
 locals {
-  common_tags = merge({ Module = "api-gateway" }, var.tags)
+  common_tags              = merge({ Module = "api-gateway" }, var.tags)
+  public_route_keys_map    = { for route_key in var.public_route_keys : route_key => route_key }
+  protected_route_keys_map = { for route_key in var.protected_route_keys : route_key => route_key }
 }
 
 # Security Group dedicado para el VPC Link — permite salida hacia el SG del ALB
@@ -77,14 +79,35 @@ resource "aws_apigatewayv2_authorizer" "jwt" {
   }
 }
 
+resource "aws_apigatewayv2_route" "public" {
+  for_each = var.enabled ? local.public_route_keys_map : {}
+
+  api_id    = aws_apigatewayv2_api.this[0].id
+  route_key = each.value
+  target    = "integrations/${aws_apigatewayv2_integration.alb[0].id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "protected" {
+  for_each = var.enabled && var.enable_jwt_authorizer ? local.protected_route_keys_map : {}
+
+  api_id    = aws_apigatewayv2_api.this[0].id
+  route_key = each.value
+  target    = "integrations/${aws_apigatewayv2_integration.alb[0].id}"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt[0].id
+}
+
 resource "aws_apigatewayv2_route" "default" {
   count     = var.enabled ? 1 : 0
   api_id    = aws_apigatewayv2_api.this[0].id
   route_key = "$default"
   target    = "integrations/${aws_apigatewayv2_integration.alb[0].id}"
 
-  authorization_type = var.enable_jwt_authorizer ? "JWT" : "NONE"
-  authorizer_id      = var.enable_jwt_authorizer ? aws_apigatewayv2_authorizer.jwt[0].id : null
+  authorization_type = var.enable_jwt_authorizer && var.protect_default_route_with_jwt ? "JWT" : "NONE"
+  authorizer_id      = var.enable_jwt_authorizer && var.protect_default_route_with_jwt ? aws_apigatewayv2_authorizer.jwt[0].id : null
 }
 
 resource "aws_apigatewayv2_stage" "default" {

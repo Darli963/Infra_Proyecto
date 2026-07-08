@@ -34,6 +34,12 @@ locals {
       name = "${var.name}-private-${index + 1}"
     }
   }
+
+  nat_gateway_azs = var.single_nat_gateway ? [var.availability_zones[0]] : var.availability_zones
+  nat_gateways    = var.enable_nat_gateway ? { for az in local.nat_gateway_azs : az => az } : {}
+  private_route_tables = var.enable_nat_gateway ? (
+    var.single_nat_gateway ? { shared = var.availability_zones[0] } : { for az in var.availability_zones : az => az }
+  ) : { isolated = "isolated" }
 }
 
 resource "aws_vpc" "this" {
@@ -101,28 +107,28 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_eip" "nat" {
-  count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(var.availability_zones)) : 0
+  for_each = local.nat_gateways
 
   domain = "vpc"
 
   tags = merge(
     local.common_tags,
     {
-      Name = var.single_nat_gateway ? "${var.name}-nat-eip" : "${var.name}-nat-eip-${count.index}"
+      Name = "${var.name}-nat-eip-${each.key}"
     }
   )
 }
 
 resource "aws_nat_gateway" "this" {
-  count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(var.availability_zones)) : 0
+  for_each = local.nat_gateways
 
-  allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = var.single_nat_gateway ? aws_subnet.public[var.availability_zones[0]].id : aws_subnet.public[var.availability_zones[count.index]].id
+  allocation_id = aws_eip.nat[each.key].id
+  subnet_id     = aws_subnet.public[each.key].id
 
   tags = merge(
     local.common_tags,
     {
-      Name = var.single_nat_gateway ? "${var.name}-nat" : "${var.name}-nat-${count.index}"
+      Name = "${var.name}-nat-${each.key}"
     }
   )
 
@@ -146,22 +152,23 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table" "private" {
-  count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(var.availability_zones)) : 1
+  for_each = local.private_route_tables
 
   vpc_id = aws_vpc.this.id
 
   dynamic "route" {
-    for_each = var.enable_nat_gateway ? [aws_nat_gateway.this[count.index].id] : []
+    for_each = var.enable_nat_gateway ? [1] : []
+
     content {
       cidr_block     = "0.0.0.0/0"
-      nat_gateway_id = route.value
+      nat_gateway_id = var.single_nat_gateway ? aws_nat_gateway.this[var.availability_zones[0]].id : aws_nat_gateway.this[each.key].id
     }
   }
 
   tags = merge(
     local.common_tags,
     {
-      Name = var.enable_nat_gateway ? (var.single_nat_gateway ? "${var.name}-private-rt" : "${var.name}-private-rt-${count.index}") : "${var.name}-private-rt"
+      Name = each.key == "shared" ? "${var.name}-private-rt" : "${var.name}-private-rt-${each.key}"
     }
   )
 }
@@ -176,6 +183,8 @@ resource "aws_route_table_association" "public" {
 resource "aws_route_table_association" "private" {
   for_each = aws_subnet.private
 
-  subnet_id      = each.value.id
-  route_table_id = var.enable_nat_gateway ? (var.single_nat_gateway ? aws_route_table.private[0].id : aws_route_table.private[each.key].id) : aws_route_table.private[0].id
+  subnet_id = each.value.id
+  route_table_id = var.enable_nat_gateway ? (
+    var.single_nat_gateway ? aws_route_table.private["shared"].id : aws_route_table.private[each.key].id
+  ) : aws_route_table.private["isolated"].id
 }

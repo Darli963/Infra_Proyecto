@@ -34,9 +34,27 @@ variable "alb_security_group_id" {
 }
 
 variable "enable_jwt_authorizer" {
-  description = "Agrega un JWT authorizer usando Cognito al route $default."
+  description = "Activa el JWT authorizer de Cognito para asociarlo a rutas protegidas."
   type        = bool
   default     = false
+}
+
+variable "protect_default_route_with_jwt" {
+  description = "Si es true, aplica JWT tambien al route $default."
+  type        = bool
+  default     = true
+}
+
+variable "public_route_keys" {
+  description = "Lista de route keys HTTP API que deben quedar publicas sin JWT."
+  type        = list(string)
+  default     = []
+}
+
+variable "protected_route_keys" {
+  description = "Lista de route keys HTTP API que deben quedar protegidas con JWT."
+  type        = list(string)
+  default     = []
 }
 
 variable "cognito_user_pool_endpoint" {

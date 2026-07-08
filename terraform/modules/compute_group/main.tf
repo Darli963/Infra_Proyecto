@@ -182,3 +182,22 @@ resource "aws_autoscaling_group" "this" {
     }
   }
 }
+
+resource "aws_autoscaling_policy" "cpu_target_tracking" {
+  count = var.enabled && var.enable_cpu_target_tracking ? 1 : 0
+
+  name                   = "${var.name}-cpu-target-tracking"
+  policy_type            = "TargetTrackingScaling"
+  autoscaling_group_name = aws_autoscaling_group.this[0].name
+
+  estimated_instance_warmup = var.cpu_estimated_instance_warmup
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+
+    target_value     = var.cpu_target_value
+    disable_scale_in = var.cpu_disable_scale_in
+  }
+}

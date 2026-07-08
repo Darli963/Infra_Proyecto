@@ -76,6 +76,58 @@ variable "price_class" {
   }
 }
 
+variable "enable_rate_limit" {
+  description = "Activa una regla WAF de rate limiting basada en IP."
+  type        = bool
+  default     = false
+}
+
+variable "rate_limit_requests" {
+  description = "Cantidad maxima de requests por IP antes de bloquear en WAF."
+  type        = number
+  default     = 2000
+
+  validation {
+    condition     = var.rate_limit_requests >= 100
+    error_message = "rate_limit_requests debe ser mayor o igual a 100."
+  }
+}
+
+variable "enable_sensitive_path_rate_limit" {
+  description = "Activa un rate limit adicional sobre rutas sensibles del proyecto."
+  type        = bool
+  default     = false
+}
+
+variable "sensitive_path_rate_limit_requests" {
+  description = "Cantidad maxima de requests por IP en rutas sensibles antes de bloquear en WAF."
+  type        = number
+  default     = 200
+
+  validation {
+    condition     = var.sensitive_path_rate_limit_requests >= 10
+    error_message = "sensitive_path_rate_limit_requests debe ser mayor o igual a 10."
+  }
+}
+
+variable "sensitive_path_patterns" {
+  description = "Prefijos de URI sensibles a proteger con rate limit adicional."
+  type        = list(string)
+  default     = []
+}
+
+variable "geo_allowlist_enabled" {
+  description = "Si es true, solo permite trafico desde los paises indicados en allowed_country_codes."
+  type        = bool
+  default     = false
+}
+
+variable "allowed_country_codes" {
+  description = "Lista de codigos ISO 3166-1 alpha-2 permitidos por WAF."
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Etiquetas adicionales para el modulo."
   type        = map(string)
@@ -89,3 +141,22 @@ variable "api_gateway_domain_name" {
   nullable    = true
 }
 
+variable "frontend_bucket_regional_domain_name" {
+  description = "Dominio regional del bucket S3 que contiene el frontend."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "frontend_bucket_arn" {
+  description = "ARN del bucket S3 que contiene el frontend."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "frontend_origin_path" {
+  description = "Prefijo dentro del bucket S3 usado como origin del frontend."
+  type        = string
+  default     = "/frontend"
+}

@@ -65,9 +65,13 @@ module "security_base" {
 module "storage" {
   source = "../../modules/storage"
 
-  bucket_name            = var.app_bucket_name
-  force_destroy          = var.bucket_force_destroy
-  versioning_enabled     = var.bucket_versioning_enabled
+  bucket_name        = var.app_bucket_name
+  force_destroy      = var.bucket_force_destroy
+  versioning_enabled = var.bucket_versioning_enabled
+  lifecycle_transition_prefixes = [
+    "archive/",
+    "logs/",
+  ]
   app_config_secret_name = var.app_config_secret_name
   tags = merge(
     local.common_tags,
@@ -189,13 +193,25 @@ module "auth" {
 module "api_gateway" {
   source = "../../modules/api_gateway"
 
-  enabled               = var.enable_api_gateway && var.enable_load_balancer
-  name                  = "${local.name_prefix}-api"
-  vpc_id                = module.networking.vpc_id
-  private_subnet_ids    = module.networking.private_subnet_ids
-  alb_listener_arn      = module.edge.listener_arn
-  alb_security_group_id = module.security_base.security_group_ids.alb
-  enable_jwt_authorizer = var.enable_jwt_authorizer
+  enabled                        = var.enable_api_gateway && var.enable_load_balancer
+  name                           = "${local.name_prefix}-api"
+  vpc_id                         = module.networking.vpc_id
+  private_subnet_ids             = module.networking.private_subnet_ids
+  alb_listener_arn               = module.edge.listener_arn
+  alb_security_group_id          = module.security_base.security_group_ids.alb
+  enable_jwt_authorizer          = var.enable_jwt_authorizer
+  protect_default_route_with_jwt = false
+  public_route_keys = [
+    "ANY /api/auth/dealership/login",
+    "ANY /api/auth/dealership/register",
+    "ANY /api/public",
+    "ANY /api/public/{proxy+}",
+    "ANY /api/healthz",
+  ]
+  protected_route_keys = [
+    "ANY /api/dealer",
+    "ANY /api/dealer/{proxy+}",
+  ]
 
   cognito_user_pool_endpoint  = var.enable_auth && var.enable_jwt_authorizer ? module.auth[0].user_pool_endpoint : null
   cognito_user_pool_client_id = var.enable_auth && var.enable_jwt_authorizer ? module.auth[0].user_pool_client_id : null
@@ -206,34 +222,38 @@ module "api_gateway" {
 module "compute_group" {
   source = "../../modules/compute_group"
 
-  enabled                    = var.enable_compute_group
-  name                       = "${local.name_prefix}-app"
-  private_subnet_ids         = module.networking.private_subnet_ids
-  security_group_ids         = [module.security_base.security_group_ids.ec2]
-  instance_profile_name      = module.security_base.ec2_instance_profile_name
-  instance_role_name         = module.security_base.ec2_iam_role_name
-  instance_type              = var.autoscaling_instance_type
-  ami_id                     = var.autoscaling_ami_id
-  root_volume_size           = var.autoscaling_root_volume_size
-  root_volume_type           = var.autoscaling_root_volume_type
-  enable_detailed_monitoring = var.autoscaling_enable_detailed_monitoring
-  nodejs_major_version       = var.autoscaling_nodejs_major_version
-  app_base_dir               = var.autoscaling_app_base_dir
-  app_port                   = var.autoscaling_app_port
-  app_service_name           = var.autoscaling_service_name
-  app_artifact_prefix        = var.autoscaling_artifact_prefix
-  artifact_bucket_name       = module.storage.bucket_id
-  artifact_bucket_arn        = module.storage.bucket_arn
-  database_secret_name       = local.database_secret_name
-  aws_region                 = var.aws_region
-  secret_arns                = compact(concat([local.database_secret_arn], var.enable_redis ? [module.cache.secret_arn] : [], [module.storage.app_config_secret_arn]))
-  db_connect_resource_arns   = local.db_connect_resource_arns
-  desired_capacity           = var.autoscaling_desired_capacity
-  min_size                   = var.autoscaling_min_size
-  max_size                   = var.autoscaling_max_size
-  health_check_grace_period  = var.autoscaling_health_check_grace_period
-  target_group_arns          = var.enable_load_balancer ? [module.edge.target_group_arn] : []
-  tags                       = local.common_tags
+  enabled                       = var.enable_compute_group
+  name                          = "${local.name_prefix}-app"
+  private_subnet_ids            = module.networking.private_subnet_ids
+  security_group_ids            = [module.security_base.security_group_ids.ec2]
+  instance_profile_name         = module.security_base.ec2_instance_profile_name
+  instance_role_name            = module.security_base.ec2_iam_role_name
+  instance_type                 = var.autoscaling_instance_type
+  ami_id                        = var.autoscaling_ami_id
+  root_volume_size              = var.autoscaling_root_volume_size
+  root_volume_type              = var.autoscaling_root_volume_type
+  enable_detailed_monitoring    = var.autoscaling_enable_detailed_monitoring
+  nodejs_major_version          = var.autoscaling_nodejs_major_version
+  app_base_dir                  = var.autoscaling_app_base_dir
+  app_port                      = var.autoscaling_app_port
+  app_service_name              = var.autoscaling_service_name
+  app_artifact_prefix           = var.autoscaling_artifact_prefix
+  artifact_bucket_name          = module.storage.bucket_id
+  artifact_bucket_arn           = module.storage.bucket_arn
+  database_secret_name          = local.database_secret_name
+  aws_region                    = var.aws_region
+  secret_arns                   = compact(concat([local.database_secret_arn], var.enable_redis ? [module.cache.secret_arn] : [], [module.storage.app_config_secret_arn]))
+  db_connect_resource_arns      = local.db_connect_resource_arns
+  desired_capacity              = var.autoscaling_desired_capacity
+  min_size                      = var.autoscaling_min_size
+  max_size                      = var.autoscaling_max_size
+  health_check_grace_period     = var.autoscaling_health_check_grace_period
+  target_group_arns             = var.enable_load_balancer ? [module.edge.target_group_arn] : []
+  enable_cpu_target_tracking    = true
+  cpu_target_value              = 80
+  cpu_disable_scale_in          = false
+  cpu_estimated_instance_warmup = 180
+  tags                          = local.common_tags
 
   depends_on = [
     aws_s3_object.smoke_app_package,
@@ -249,18 +269,32 @@ module "perimeter" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  enabled                 = var.enable_perimeter && var.enable_load_balancer
-  name                    = "${local.name_prefix}-public"
-  origin_domain_name      = module.edge.alb_dns_name
-  origin_http_port        = var.load_balancer_listener_port
-  origin_protocol_policy  = var.perimeter_origin_protocol_policy
-  custom_domain_name      = var.perimeter_custom_domain_name
-  enable_acm_certificate  = var.perimeter_enable_acm_certificate
-  manage_route53_records  = var.perimeter_manage_route53_records
-  route53_zone_id         = var.perimeter_route53_zone_id
-  price_class             = var.perimeter_price_class
-  api_gateway_domain_name = module.api_gateway.api_domain_name
-  tags                    = local.common_tags
+  enabled                            = var.enable_perimeter && var.enable_load_balancer
+  name                               = "${local.name_prefix}-public"
+  origin_domain_name                 = module.edge.alb_dns_name
+  origin_http_port                   = var.load_balancer_listener_port
+  origin_protocol_policy             = var.perimeter_origin_protocol_policy
+  custom_domain_name                 = var.perimeter_custom_domain_name
+  enable_acm_certificate             = var.perimeter_enable_acm_certificate
+  manage_route53_records             = var.perimeter_manage_route53_records
+  route53_zone_id                    = var.perimeter_route53_zone_id
+  price_class                        = var.perimeter_price_class
+  enable_rate_limit                  = var.perimeter_enable_rate_limit
+  rate_limit_requests                = var.perimeter_rate_limit_requests
+  enable_sensitive_path_rate_limit   = true
+  sensitive_path_rate_limit_requests = 200
+  sensitive_path_patterns = [
+    "/api/auth/dealership/login",
+    "/api/auth/dealership/register",
+    "/api/dealer/",
+  ]
+  geo_allowlist_enabled                = var.perimeter_geo_allowlist_enabled
+  allowed_country_codes                = var.perimeter_allowed_country_codes
+  api_gateway_domain_name              = module.api_gateway.api_domain_name
+  frontend_bucket_regional_domain_name = module.storage.bucket_regional_domain_name
+  frontend_bucket_arn                  = module.storage.bucket_arn
+  frontend_origin_path                 = "/frontend"
+  tags                                 = local.common_tags
 }
 
 module "observability" {

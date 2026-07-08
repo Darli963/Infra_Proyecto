@@ -39,6 +39,12 @@ variable "lifecycle_transition_glacier_days" {
   default     = 90
 }
 
+variable "lifecycle_transition_prefixes" {
+  description = "Prefijos del bucket a los que se aplicara el lifecycle hacia IA y Glacier."
+  type        = list(string)
+  default     = ["archive/", "logs/"]
+}
+
 variable "app_config_secret_name" {
   description = "Nombre del secreto de configuracion de la app en Secrets Manager. Si es null no se crea."
   type        = string

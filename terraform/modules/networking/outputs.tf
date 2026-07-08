@@ -20,7 +20,7 @@ output "internet_gateway_id" {
 
 output "nat_gateway_id" {
   description = "ID del NAT Gateway."
-  value       = var.enable_nat_gateway ? (var.single_nat_gateway ? aws_nat_gateway.this[0].id : aws_nat_gateway.this[0].id) : null
+  value       = var.enable_nat_gateway ? aws_nat_gateway.this[var.availability_zones[0]].id : null
 }
 
 output "public_route_table_id" {
@@ -30,5 +30,5 @@ output "public_route_table_id" {
 
 output "private_route_table_ids" {
   description = "IDs de las route tables privadas."
-  value       = var.enable_nat_gateway ? (var.single_nat_gateway ? [aws_route_table.private[0].id] : [for rt in aws_route_table.private : rt.id]) : [aws_route_table.private[0].id]
+  value       = var.enable_nat_gateway ? values(aws_route_table.private)[*].id : [aws_route_table.private["isolated"].id]
 }

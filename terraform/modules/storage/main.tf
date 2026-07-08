@@ -36,28 +36,27 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   count  = var.lifecycle_enabled ? 1 : 0
   bucket = aws_s3_bucket.this.id
 
-  rule {
-    id     = "tiered-storage"
-    status = "Enabled"
+  dynamic "rule" {
+    for_each = toset(var.lifecycle_transition_prefixes)
 
-    # Aplica a todos los objetos del bucket (filter vacio = sin filtro de prefix)
-    filter {}
+    content {
+      id     = "tiered-storage-${replace(replace(replace(rule.value, "/", "-"), "_", "-"), ".", "-")}"
+      status = "Enabled"
 
-    transition {
-      days          = var.lifecycle_transition_standard_ia_days
-      storage_class = "STANDARD_IA"
+      filter {
+        prefix = rule.value
+      }
+
+      transition {
+        days          = var.lifecycle_transition_standard_ia_days
+        storage_class = "STANDARD_IA"
+      }
+
+      transition {
+        days          = var.lifecycle_transition_glacier_days
+        storage_class = "GLACIER"
+      }
     }
-
-    transition {
-      days          = var.lifecycle_transition_glacier_days
-      storage_class = "GLACIER"
-    }
-
-    # Opcional: descomentar para expirar objetos o mover a DEEP_ARCHIVE a los 180 dias
-    # transition {
-    #   days          = 180
-    #   storage_class = "DEEP_ARCHIVE"
-    # }
   }
 }
 

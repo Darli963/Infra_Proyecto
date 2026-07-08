@@ -158,6 +158,30 @@ variable "target_group_arns" {
   default     = []
 }
 
+variable "enable_cpu_target_tracking" {
+  description = "Activa auto-scaling del ASG por CPU usando Target Tracking."
+  type        = bool
+  default     = false
+}
+
+variable "cpu_target_value" {
+  description = "Target de CPU (ASGAverageCPUUtilization) para auto-scaling."
+  type        = number
+  default     = 80
+}
+
+variable "cpu_disable_scale_in" {
+  description = "Si es true, deshabilita el scale-in (bajada) del Target Tracking."
+  type        = bool
+  default     = false
+}
+
+variable "cpu_estimated_instance_warmup" {
+  description = "Segundos de warmup estimado para nuevas instancias del ASG."
+  type        = number
+  default     = 180
+}
+
 variable "tags" {
   description = "Etiquetas adicionales para el modulo."
   type        = map(string)

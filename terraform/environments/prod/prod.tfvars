@@ -57,6 +57,10 @@ perimeter_enable_acm_certificate = false
 perimeter_manage_route53_records = false
 perimeter_route53_zone_id        = null
 perimeter_price_class            = "PriceClass_100"
+perimeter_enable_rate_limit      = false
+perimeter_rate_limit_requests    = 2000
+perimeter_geo_allowlist_enabled  = false
+perimeter_allowed_country_codes  = []
 
 # Observabilidad
 observability_sns_email_endpoint    = null

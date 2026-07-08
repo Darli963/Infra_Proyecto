@@ -97,6 +97,10 @@ module "perimeter" {
   manage_route53_records = var.perimeter_manage_route53_records
   route53_zone_id        = var.perimeter_route53_zone_id
   price_class            = var.perimeter_price_class
+  enable_rate_limit      = var.perimeter_enable_rate_limit
+  rate_limit_requests    = var.perimeter_rate_limit_requests
+  geo_allowlist_enabled  = var.perimeter_geo_allowlist_enabled
+  allowed_country_codes  = var.perimeter_allowed_country_codes
   tags                   = local.common_tags
 }
 

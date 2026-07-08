@@ -547,6 +547,30 @@ variable "perimeter_price_class" {
   }
 }
 
+variable "perimeter_enable_rate_limit" {
+  description = "Activa una regla WAF de rate limiting para el perimetro."
+  type        = bool
+  default     = false
+}
+
+variable "perimeter_rate_limit_requests" {
+  description = "Maximo de requests por IP antes de bloquear en WAF."
+  type        = number
+  default     = 2000
+}
+
+variable "perimeter_geo_allowlist_enabled" {
+  description = "Si es true, solo permite trafico desde los paises definidos en perimeter_allowed_country_codes."
+  type        = bool
+  default     = false
+}
+
+variable "perimeter_allowed_country_codes" {
+  description = "Codigos ISO 3166-1 alpha-2 permitidos por el WAF del perimetro."
+  type        = list(string)
+  default     = []
+}
+
 # --- Observabilidad ---
 
 variable "observability_sns_email_endpoint" {
