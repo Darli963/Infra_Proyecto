@@ -11,11 +11,12 @@ export const config = {
   },
 
   aws: {
-    region:           process.env.AWS_REGION            ?? "us-east-1",
-    cognitoUserPoolId: process.env.COGNITO_USER_POOL_ID ?? "",
-    cognitoClientId:   process.env.COGNITO_CLIENT_ID    ?? "",
-    s3Bucket:          process.env.S3_BUCKET_NAME        ?? "",
-    cloudfrontUrl:     process.env.CLOUDFRONT_URL        ?? "",
+    region:                  process.env.AWS_REGION                    ?? "us-east-1",
+    cognitoUserPoolId:       process.env.COGNITO_USER_POOL_ID          ?? "",
+    cognitoClientId:         process.env.COGNITO_CLIENT_ID             ?? "",
+    cognitoUserPoolEndpoint: process.env.COGNITO_USER_POOL_ENDPOINT    ?? "",
+    s3Bucket:                process.env.S3_BUCKET_NAME                ?? "",
+    cloudfrontUrl:           process.env.CLOUDFRONT_URL                ?? "",
   },
 
   // "local" usa JWT+bcrypt; "cognito" usa AWS Cognito

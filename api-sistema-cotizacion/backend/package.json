@@ -9,6 +9,7 @@
     "start": "node start.js",
     "start:direct": "node dist/server.js",
     "lint": "eslint src --ext .ts",
+    "check:auth:cognito": "ts-node scripts/check-cognito-auth.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:prod": "prisma migrate deploy",

@@ -12,7 +12,7 @@ export interface AuthProvider {
   hashPassword(plain: string): Promise<string>;
   verifyPassword(plain: string, hash: string): Promise<boolean>;
   signToken(payload: AuthTokenPayload): string;
-  verifyToken(token: string): AuthTokenPayload;
+  verifyToken(token: string): Promise<AuthTokenPayload>;
 }
 
 // ─── Proveedor local (JWT + bcrypt) ──────────────────────────────────────────
@@ -24,7 +24,7 @@ const localProvider: AuthProvider = {
     jwt.sign(payload, config.jwt.secret, {
       expiresIn: config.jwt.expiresIn as jwt.SignOptions["expiresIn"],
     }),
-  verifyToken: (token) =>
+  verifyToken: async (token) =>
     jwt.verify(token, config.jwt.secret) as AuthTokenPayload,
 };
 

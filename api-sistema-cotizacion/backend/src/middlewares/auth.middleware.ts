@@ -18,10 +18,12 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     return;
   }
 
-  try {
-    req.dealership = authProvider.verifyToken(header.slice(7));
-    next();
-  } catch {
-    res.status(401).json({ status: "error", message: "Token inválido o expirado" });
-  }
+  void authProvider.verifyToken(header.slice(7))
+    .then((payload) => {
+      req.dealership = payload;
+      next();
+    })
+    .catch(() => {
+      res.status(401).json({ status: "error", message: "Token inválido o expirado" });
+    });
 }
