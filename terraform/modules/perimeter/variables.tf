@@ -155,6 +155,12 @@ variable "frontend_bucket_arn" {
   nullable    = true
 }
 
+variable "enable_frontend_origin" {
+  description = "Activa el origen S3 para el frontend."
+  type        = bool
+  default     = false
+}
+
 variable "frontend_origin_path" {
   description = "Prefijo dentro del bucket S3 usado como origin del frontend."
   type        = string

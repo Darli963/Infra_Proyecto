@@ -18,7 +18,7 @@ locals {
   route53_ready                     = local.request_certificate && local.route53_zone_id_normalized != "" && var.manage_route53_records
   geo_allowlist_enabled             = var.geo_allowlist_enabled && length(var.allowed_country_codes) > 0
   sensitive_path_rate_limit_enabled = var.enable_sensitive_path_rate_limit && length(var.sensitive_path_patterns) > 0
-  frontend_origin_enabled           = var.frontend_bucket_regional_domain_name != null && var.frontend_bucket_arn != null
+  frontend_origin_enabled           = var.enable_frontend_origin
   common_tags = merge(
     {
       Module = "perimeter"

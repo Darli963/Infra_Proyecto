@@ -291,6 +291,7 @@ module "perimeter" {
   geo_allowlist_enabled                = var.perimeter_geo_allowlist_enabled
   allowed_country_codes                = var.perimeter_allowed_country_codes
   api_gateway_domain_name              = module.api_gateway.api_domain_name
+  enable_frontend_origin               = true
   frontend_bucket_regional_domain_name = module.storage.bucket_regional_domain_name
   frontend_bucket_arn                  = module.storage.bucket_arn
   frontend_origin_path                 = "/frontend"
