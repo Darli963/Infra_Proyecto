@@ -491,6 +491,13 @@ variable "enable_jwt_authorizer" {
   default     = false
 }
 
+variable "cognito_domain_suffix" {
+  description = "Sufijo opcional para el domain prefix de Cognito (ej. account ID) que garantiza unicidad global."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
 # --- Perimetro publico ---
 
 variable "enable_perimeter" {
