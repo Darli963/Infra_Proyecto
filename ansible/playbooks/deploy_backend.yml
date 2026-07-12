@@ -20,7 +20,7 @@
 
     - name: Check if backend source directory exists
       ansible.builtin.stat:
-        path: "{{ playbook_dir }}/../api-sistema-cotizacion/backend"
+        path: "{{ playbook_dir }}/../../api-sistema-cotizacion/backend"
       register: backend_source
       delegate_to: localhost
       vars:
@@ -29,7 +29,7 @@
 
     - name: Fail if backend source directory does not exist
       ansible.builtin.fail:
-        msg: "Backend source directory not found at {{ playbook_dir }}/../api-sistema-cotizacion/backend"
+        msg: "Backend source directory not found at {{ playbook_dir }}/../../api-sistema-cotizacion/backend"
       when: not backend_source.stat.exists
 
   roles:
