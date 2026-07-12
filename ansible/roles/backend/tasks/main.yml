@@ -132,8 +132,12 @@
     enabled: true
     daemon_reload: true
 
+- name: Wait 15 seconds for service to start or fail
+  ansible.builtin.wait_for:
+    timeout: 15
+
 - name: Get cotizacion-app service logs (always run)
-  ansible.builtin.command: journalctl -u cotizacion-app -n 100 --no-pager
+  ansible.builtin.command: journalctl -u cotizacion-app -b -n 200 --no-pager --no-hostname
   register: service_logs
   changed_when: false
   ignore_errors: true
@@ -156,7 +160,7 @@
   ansible.builtin.wait_for:
     port: 3000
     host: 127.0.0.1
-    delay: 10
+    delay: 5
     timeout: 120
 
 - name: Verify application health
