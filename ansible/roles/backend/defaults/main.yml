@@ -1,7 +1,10 @@
 ---
 # Backend deployment defaults
+# backend_source_dir se define en el playbook usando playbook_dir para
+# garantizar una ruta absoluta correcta en cualquier entorno (CI o local).
+# Si se usa el rol standalone, sobreescribir esta variable con la ruta correcta.
+backend_source_dir: "{{ playbook_dir }}/../../api-sistema-cotizacion/backend"
 backend_release_path: /opt/phase4-app/releases/{{ ansible_date_time.epoch }}
-backend_source_dir: ../../../api-sistema-cotizacion/backend
 
 # Environment configuration
 backend_node_env: production
@@ -14,3 +17,4 @@ backend_auth_provider: cognito
 # backend_cloudfront_url
 # backend_cognito_user_pool_id
 # backend_cognito_client_id
+# backend_cognito_user_pool_endpoint  (optional, defaults to '')

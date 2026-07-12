@@ -8,6 +8,9 @@
     - inventory/group_vars/deploy_dev.yml
 
   vars:
+    # Ruta absoluta al código fuente del backend — resuelta desde el playbook
+    # ansible/playbooks/ → subir 2 niveles → raíz del repo → api-sistema-cotizacion/backend
+    backend_source_dir: "{{ playbook_dir }}/../../api-sistema-cotizacion/backend"
     # Valor por defecto vacío si no se pasa como -e ni está en group_vars
     backend_cognito_user_pool_endpoint: "{{ backend_cognito_user_pool_endpoint | default('') }}"
 
