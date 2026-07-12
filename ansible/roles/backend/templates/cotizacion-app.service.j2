@@ -17,15 +17,11 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=cotizacion-app
 
-# Security hardening
+# Temporarily relaxed security
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/opt/phase4-app/current
-RestrictAddressFamilies=AF_INET AF_INET6
-RestrictRealtime=true
-SystemCallFilter=@system-service
+ProtectSystem=full
+ReadWritePaths=/opt/phase4-app
 
 [Install]
 WantedBy=multi-user.target
