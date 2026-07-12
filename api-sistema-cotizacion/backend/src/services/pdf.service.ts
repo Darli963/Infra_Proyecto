@@ -1,6 +1,6 @@
 import PDFDocument from "pdfkit";
 import { Readable, PassThrough } from "stream";
-import prisma from "../config/prisma";
+import prisma, { Decimal } from "../config/prisma";
 
 // ─── carga de datos ───────────────────────────────────────────────────────────
 
@@ -28,8 +28,9 @@ type SimData = Awaited<ReturnType<typeof loadSimulationForPdf>>;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function money(amount: string | number, currency: string) {
-  return `${currency} ${Number(amount).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
+function money(amount: string | number | Decimal, currency: string) {
+  const num = amount instanceof Decimal ? amount.toNumber() : Number(amount);
+  return `${currency} ${num.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 }
 
 function fmt(date: Date | null) {
