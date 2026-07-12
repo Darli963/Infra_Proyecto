@@ -35,6 +35,9 @@
       when: not frontend_source.stat.exists
 
   tasks:
+    # -----------------------------------------------------------------------
+    # 1. Crear .env.production con variables de runtime
+    # -----------------------------------------------------------------------
     - name: Create .env.production file
       ansible.builtin.copy:
         dest: "{{ frontend_source_dir }}/.env.production"
@@ -46,18 +49,31 @@
           VITE_CLOUDFRONT_URL=https://{{ frontend_cloudfront_domain }}
         mode: '0600'
 
+    # -----------------------------------------------------------------------
+    # 2. Instalar dependencias y compilar el frontend
+    # -----------------------------------------------------------------------
     - name: Install npm dependencies
-      community.general.npm:
-        path: "{{ frontend_source_dir }}"
-        ci: true
+      ansible.builtin.command:
+        cmd: npm ci
+        chdir: "{{ frontend_source_dir }}"
+      register: npm_install
+      changed_when: true
 
     - name: Build frontend
-      community.general.npm:
-        path: "{{ frontend_source_dir }}"
-        production: true
-        command: run build
+      ansible.builtin.command:
+        cmd: npm run build
+        chdir: "{{ frontend_source_dir }}"
+      environment:
+        NODE_ENV: production
+      register: npm_build
+      changed_when: true
 
-    - name: Check if dist directory exists
+    - name: Show build output
+      ansible.builtin.debug:
+        var: npm_build.stdout_lines
+      when: npm_build.stdout_lines | length > 0
+
+    - name: Check if dist directory exists after build
       ansible.builtin.stat:
         path: "{{ frontend_dist_dir }}"
       register: frontend_dist
@@ -67,34 +83,68 @@
         msg: "Frontend build did not create dist directory at {{ frontend_dist_dir }}"
       when: not frontend_dist.stat.exists
 
-    - name: Sync frontend to S3
-      amazon.aws.s3_sync:
-        bucket: "{{ frontend_s3_bucket }}"
-        prefix: frontend/
-        src: "{{ frontend_dist_dir }}/"
-        delete: true
-        cache_control: "public,max-age=31536000,immutable"
-        exclude: "index.html"
-        region: "{{ frontend_aws_region }}"
+    # -----------------------------------------------------------------------
+    # 3. Subir assets con cache agresivo (todo excepto index.html)
+    #    Usamos AWS CLI directamente — no depende de versiones de colecciones
+    # -----------------------------------------------------------------------
+    - name: Sync frontend assets to S3 (with long-term cache, excluding index.html)
+      ansible.builtin.command:
+        cmd: >
+          aws s3 sync {{ frontend_dist_dir }}/
+          s3://{{ frontend_s3_bucket }}/frontend/
+          --region {{ frontend_aws_region }}
+          --delete
+          --exclude "index.html"
+          --cache-control "public,max-age=31536000,immutable"
+          --no-progress
+      register: s3_sync
+      changed_when: "'upload' in s3_sync.stdout or 'delete' in s3_sync.stdout"
 
-    - name: Upload index.html without aggressive caching
-      amazon.aws.s3_object:
-        bucket: "{{ frontend_s3_bucket }}"
-        key: frontend/index.html
-        src: "{{ frontend_dist_dir }}/index.html"
-        cache_control: "no-cache,no-store,must-revalidate"
-        region: "{{ frontend_aws_region }}"
-        mode: put
+    - name: Show S3 sync output
+      ansible.builtin.debug:
+        var: s3_sync.stdout_lines
+      when: s3_sync.stdout_lines | length > 0
 
-    - name: Create CloudFront invalidation
-      amazon.aws.cloudfront_invalidation:
-        distribution_id: "{{ frontend_cloudfront_distribution_id | default(omit) }}"
-        distribution_domain_name: "{{ frontend_cloudfront_domain }}"
-        invalidation_paths:
-          - "/*"
-        region: "{{ frontend_aws_region }}"
-      when: frontend_cloudfront_distribution_id is defined
+    # -----------------------------------------------------------------------
+    # 4. Subir index.html sin cache (siempre debe ser fresco)
+    # -----------------------------------------------------------------------
+    - name: Upload index.html without caching
+      ansible.builtin.command:
+        cmd: >
+          aws s3 cp {{ frontend_dist_dir }}/index.html
+          s3://{{ frontend_s3_bucket }}/frontend/index.html
+          --region {{ frontend_aws_region }}
+          --cache-control "no-cache,no-store,must-revalidate"
+          --content-type "text/html"
+          --no-progress
+      register: s3_upload_index
+      changed_when: true
 
+    # -----------------------------------------------------------------------
+    # 5. Invalidar caché de CloudFront
+    # -----------------------------------------------------------------------
+    - name: Create CloudFront cache invalidation
+      ansible.builtin.command:
+        cmd: >
+          aws cloudfront create-invalidation
+          --distribution-id {{ frontend_cloudfront_distribution_id }}
+          --paths "/*"
+          --region {{ frontend_aws_region }}
+      register: cf_invalidation
+      changed_when: true
+      when: frontend_cloudfront_distribution_id is defined and frontend_cloudfront_distribution_id | length > 0
+
+    - name: Show CloudFront invalidation result
+      ansible.builtin.debug:
+        var: cf_invalidation.stdout_lines
+      when:
+        - frontend_cloudfront_distribution_id is defined
+        - cf_invalidation.stdout_lines is defined
+        - cf_invalidation.stdout_lines | length > 0
+
+    # -----------------------------------------------------------------------
+    # 6. Confirmación final
+    # -----------------------------------------------------------------------
     - name: Display deployment status
       ansible.builtin.debug:
         msg: "Frontend deployment successful. Available at https://{{ frontend_cloudfront_domain }}"
