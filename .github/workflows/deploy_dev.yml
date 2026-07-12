@@ -82,9 +82,10 @@ jobs:
           CLOUDFRONT_DISTRIBUTION_ID=$(terraform output -raw cloudfront_distribution_id)
           COGNITO_USER_POOL_ID=$(terraform output -raw cognito_user_pool_id)
           COGNITO_CLIENT_ID=$(terraform output -raw cognito_client_id)
+          COGNITO_USER_POOL_ENDPOINT=$(terraform output -raw cognito_user_pool_endpoint)
           TEST_INSTANCE_ID=$(terraform output -raw test_instance_id)
 
-          for var in AURORA_SECRET_NAME S3_BUCKET_NAME CLOUDFRONT_DOMAIN CLOUDFRONT_DISTRIBUTION_ID COGNITO_USER_POOL_ID COGNITO_CLIENT_ID TEST_INSTANCE_ID; do
+          for var in AURORA_SECRET_NAME S3_BUCKET_NAME CLOUDFRONT_DOMAIN CLOUDFRONT_DISTRIBUTION_ID COGNITO_USER_POOL_ID COGNITO_CLIENT_ID COGNITO_USER_POOL_ENDPOINT TEST_INSTANCE_ID; do
             if [ -z "${!var}" ] || [ "${!var}" = "null" ]; then
               echo "::error::Terraform output ${var} is empty or null"
               exit 1
@@ -97,6 +98,7 @@ jobs:
           echo "CLOUDFRONT_DISTRIBUTION_ID=${CLOUDFRONT_DISTRIBUTION_ID}" >> $GITHUB_ENV
           echo "COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}" >> $GITHUB_ENV
           echo "COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID}" >> $GITHUB_ENV
+          echo "COGNITO_USER_POOL_ENDPOINT=${COGNITO_USER_POOL_ENDPOINT}" >> $GITHUB_ENV
           echo "TEST_INSTANCE_ID=${TEST_INSTANCE_ID}" >> $GITHUB_ENV
 
           echo "Terraform outputs extracted successfully"
@@ -186,7 +188,8 @@ jobs:
             -e backend_cloudfront_url="https://${CLOUDFRONT_DOMAIN}" \
             -e backend_aws_region="${AWS_REGION}" \
             -e backend_cognito_user_pool_id="${COGNITO_USER_POOL_ID}" \
-            -e backend_cognito_client_id="${COGNITO_CLIENT_ID}"
+            -e backend_cognito_client_id="${COGNITO_CLIENT_ID}" \
+            -e backend_cognito_user_pool_endpoint="${COGNITO_USER_POOL_ENDPOINT}"
 
       - name: Desplegar frontend en dev por Ansible
         env:

@@ -227,3 +227,8 @@ output "cognito_client_id" {
   description = "ID del cliente del User Pool de Cognito usado por workflows y frontend."
   value       = var.enable_auth ? module.auth[0].user_pool_client_id : null
 }
+
+output "cognito_user_pool_endpoint" {
+  description = "Endpoint (issuer) del User Pool de Cognito."
+  value       = var.enable_auth ? module.auth[0].user_pool_endpoint : null
+}

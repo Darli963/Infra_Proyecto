@@ -16,6 +16,7 @@
           - backend_cloudfront_url is defined
           - backend_cognito_user_pool_id is defined
           - backend_cognito_client_id is defined
+          - backend_cognito_user_pool_endpoint is defined
         fail_msg: "Required variables are not defined. Pass them via -e or set in inventory."
 
     - name: Check if backend source directory exists
