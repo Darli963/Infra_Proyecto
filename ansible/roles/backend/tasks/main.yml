@@ -41,8 +41,38 @@
     mode: '0755'
 
 # ---------------------------------------------------------------------------
-# 3. Copiar archivos de la aplicación
-#    Permisos 0644 para que Node (ec2-user) pueda leer todos los .js
+# 3. Verificar que el dist/ existe en el controlador ANTES de copiar
+#    Si no existe, el error es en el build step del workflow, no aquí.
+# ---------------------------------------------------------------------------
+- name: Check that dist/ directory exists on controller (built in CI)
+  ansible.builtin.stat:
+    path: "{{ backend_source_dir }}/dist"
+  register: dist_check
+  delegate_to: localhost
+  become: false
+
+- name: Fail clearly if dist/ was not built
+  ansible.builtin.fail:
+    msg: >
+      El directorio dist/ no existe en {{ backend_source_dir }}/dist.
+      Asegúrate de que el paso 'Build backend' (npm run build) se ejecutó
+      antes de este playbook y que el working-directory es correcto.
+  when: not dist_check.stat.exists or not dist_check.stat.isdir
+
+- name: List dist/ contents (verify build output)
+  ansible.builtin.command: ls -la "{{ backend_source_dir }}/dist/"
+  register: dist_contents
+  delegate_to: localhost
+  become: false
+  changed_when: false
+
+- name: Show dist/ contents
+  ansible.builtin.debug:
+    var: dist_contents.stdout_lines
+
+# ---------------------------------------------------------------------------
+# 4. Copiar archivos de la aplicación
+#    Permisos 0644 para archivos, 0755 para directorios (Node necesita leerlos)
 # ---------------------------------------------------------------------------
 - name: Copy backend application files
   ansible.builtin.copy:
@@ -58,50 +88,49 @@
     - { src: "{{ backend_source_dir }}/package-lock.json", dest: "package-lock.json" }
     - { src: "{{ backend_source_dir }}/prisma/", dest: "prisma/" }
 
-# Asegurar que los directorios dentro del release sean navegables
-- name: Ensure release directory permissions are correct
+# Restaurar permisos de directorio (copy los pone 0755 por defecto, pero lo hacemos explícito)
+- name: Ensure dist directory is executable/readable
   ansible.builtin.file:
-    path: "{{ backend_release_path }}"
+    path: "{{ backend_release_path }}/{{ item }}"
     state: directory
     owner: ec2-user
     group: ec2-user
     mode: '0755'
     recurse: false
-
-- name: Fix dist directory permissions
-  ansible.builtin.file:
-    path: "{{ backend_release_path }}/dist"
-    state: directory
-    owner: ec2-user
-    group: ec2-user
-    mode: '0755'
-    recurse: false
+  loop:
+    - "."
+    - "dist"
+    - "prisma"
 
 # ---------------------------------------------------------------------------
-# 4. Instalar dependencias npm
+# 5. Instalar TODAS las dependencias (incluyendo devDependencies)
+#    porque prisma CLI está en devDependencies y se necesita para generate
 # ---------------------------------------------------------------------------
-- name: Install npm dependencies
+- name: Install ALL npm dependencies (including devDependencies for prisma)
   ansible.builtin.shell: |
-    runuser -u ec2-user -- bash -lc 'cd {{ backend_release_path }} && npm ci --production'
+    runuser -u ec2-user -- bash -lc 'cd {{ backend_release_path }} && npm ci 2>&1'
   register: npm_install
   changed_when: true
 
 - name: Show npm install output
   ansible.builtin.debug:
     var: npm_install.stdout_lines
-  when: npm_install.stdout_lines | length > 0
 
 # ---------------------------------------------------------------------------
-# 5. Generar cliente Prisma
+# 6. Generar cliente Prisma (necesita devDependencies instaladas)
 # ---------------------------------------------------------------------------
 - name: Generate Prisma client
   ansible.builtin.shell: |
-    runuser -u ec2-user -- bash -lc 'cd {{ backend_release_path }} && npx prisma generate'
+    runuser -u ec2-user -- bash -lc 'cd {{ backend_release_path }} && npx prisma generate 2>&1'
   register: prisma_generate
   changed_when: true
 
+- name: Show Prisma generate output
+  ansible.builtin.debug:
+    var: prisma_generate.stdout_lines
+
 # ---------------------------------------------------------------------------
-# 6. Obtener credenciales de BD y construir DATABASE_URL
+# 7. Obtener credenciales de BD y construir DATABASE_URL
 # ---------------------------------------------------------------------------
 - name: Fetch database credentials from Secrets Manager
   ansible.builtin.command:
@@ -121,17 +150,21 @@
   no_log: true
 
 # ---------------------------------------------------------------------------
-# 7. Ejecutar migraciones Prisma
+# 8. Ejecutar migraciones Prisma
 # ---------------------------------------------------------------------------
 - name: Run Prisma migrations
   ansible.builtin.shell: |
-    runuser -u ec2-user -- bash -lc 'cd {{ backend_release_path }} && DATABASE_URL="{{ database_url }}" npx prisma migrate deploy'
+    runuser -u ec2-user -- bash -lc 'cd {{ backend_release_path }} && DATABASE_URL="{{ database_url }}" npx prisma migrate deploy 2>&1'
   register: prisma_migrate
   changed_when: true
   no_log: true
 
+- name: Show migration result (without sensitive data)
+  ansible.builtin.debug:
+    msg: "Prisma migrate deploy completed with rc={{ prisma_migrate.rc }}"
+
 # ---------------------------------------------------------------------------
-# 8. Actualizar symlink current → release
+# 9. Actualizar symlink current → release
 # ---------------------------------------------------------------------------
 - name: Update current symlink
   ansible.builtin.file:
@@ -143,8 +176,8 @@
     force: true
 
 # ---------------------------------------------------------------------------
-# 9. Crear .env CON DATABASE_URL *antes* de arrancar el servicio
-#    CRÍTICO: debe estar presente antes de que systemd lo lea
+# 10. Crear .env CON DATABASE_URL antes de arrancar el servicio
+#     systemd lo lee via EnvironmentFile antes de ejecutar ExecStart
 # ---------------------------------------------------------------------------
 - name: Create .env file with all required variables
   ansible.builtin.template:
@@ -155,7 +188,7 @@
     mode: '0600'
 
 # ---------------------------------------------------------------------------
-# 10. Instalar/actualizar unit de systemd
+# 11. Instalar/actualizar unit de systemd
 # ---------------------------------------------------------------------------
 - name: Create systemd service file for cotizacion-app
   ansible.builtin.template:
@@ -168,7 +201,7 @@
     daemon_reload: true
 
 # ---------------------------------------------------------------------------
-# 11. Parar servicio si estaba corriendo (para aplicar cambios limpios)
+# 12. Parar servicio si estaba corriendo (reset limpio)
 # ---------------------------------------------------------------------------
 - name: Stop cotizacion-app service if running
   ansible.builtin.systemd:
@@ -177,27 +210,59 @@
   failed_when: false
 
 # ---------------------------------------------------------------------------
-# 12. Prueba manual antes de arrancar via systemd (diagnóstico anticipado)
+# 13. Prueba manual con captura de stdout+stderr
+#     Identifica errores ANTES de intentar arrancar via systemd
 # ---------------------------------------------------------------------------
-- name: Test starting app manually to check for early errors
+- name: Test starting app manually to capture early errors (stdout+stderr)
   ansible.builtin.shell: |
     runuser -u ec2-user -- bash -lc '
       set -a
       source /opt/phase4-app/current/.env
       set +a
       cd /opt/phase4-app/current
-      timeout 8s node start.js 2>&1 || true
+      node start.js 2>&1 &
+      NODE_PID=$!
+      sleep 5
+      if kill -0 $NODE_PID 2>/dev/null; then
+        echo "[OK] Node sigue corriendo despues de 5s (buen signo)"
+        kill $NODE_PID 2>/dev/null || true
+      else
+        echo "[FAIL] Node termino antes de 5s"
+      fi
     '
   register: manual_test
   changed_when: false
   ignore_errors: true
 
-- name: Show manual test output
+- name: Show manual test output (stdout+stderr combined)
   ansible.builtin.debug:
-    var: manual_test.stdout_lines
+    msg: "{{ manual_test.stdout_lines + manual_test.stderr_lines }}"
 
 # ---------------------------------------------------------------------------
-# 13. Arrancar y habilitar el servicio
+# 14. Verificar que dist/server.js existe en la EC2
+# ---------------------------------------------------------------------------
+- name: Verify dist/server.js exists on target
+  ansible.builtin.stat:
+    path: /opt/phase4-app/current/dist/server.js
+  register: server_js_check
+
+- name: Show dist/server.js status
+  ansible.builtin.debug:
+    msg: >
+      dist/server.js {{ 'EXISTS' if server_js_check.stat.exists else 'MISSING - build not copied correctly' }}
+
+- name: List dist/ contents on target
+  ansible.builtin.command: ls -la /opt/phase4-app/current/dist/
+  register: dist_target_contents
+  changed_when: false
+  ignore_errors: true
+
+- name: Show dist/ contents on target
+  ansible.builtin.debug:
+    var: dist_target_contents.stdout_lines
+
+# ---------------------------------------------------------------------------
+# 15. Arrancar y habilitar el servicio
 # ---------------------------------------------------------------------------
 - name: Ensure cotizacion-app service is started and enabled
   ansible.builtin.systemd:
@@ -206,20 +271,20 @@
     enabled: true
     daemon_reload: false
 
-- name: Wait 15 seconds for service to stabilize
+- name: Wait 20 seconds for service to stabilize
   ansible.builtin.wait_for:
-    timeout: 15
+    timeout: 20
 
 # ---------------------------------------------------------------------------
-# 14. Diagnóstico post-arranque
+# 16. Diagnóstico post-arranque — stdout_lines Y stderr_lines
 # ---------------------------------------------------------------------------
-- name: Get cotizacion-app service logs
-  ansible.builtin.command: journalctl -u cotizacion-app -b --no-pager --no-hostname -o short-precise -n 100
+- name: Get cotizacion-app journal logs (full output)
+  ansible.builtin.shell: journalctl -u cotizacion-app -b --no-pager --no-hostname -o short-precise -n 150 2>&1
   register: service_logs
   changed_when: false
   ignore_errors: true
 
-- name: Show cotizacion-app service logs
+- name: Show cotizacion-app journal logs
   ansible.builtin.debug:
     var: service_logs.stdout_lines
 
@@ -234,7 +299,7 @@
     var: service_status.stdout_lines
 
 # ---------------------------------------------------------------------------
-# 15. Healthcheck final
+# 17. Healthcheck final
 # ---------------------------------------------------------------------------
 - name: Wait for application to be ready on port 3000
   ansible.builtin.wait_for:
