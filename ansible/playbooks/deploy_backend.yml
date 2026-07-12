@@ -23,7 +23,8 @@
         path: "{{ playbook_dir }}/../api-sistema-cotizacion/backend"
       register: backend_source
       delegate_to: localhost
-      connection: local
+      vars:
+        ansible_connection: local
       become: false
 
     - name: Fail if backend source directory does not exist
