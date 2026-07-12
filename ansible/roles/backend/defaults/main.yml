@@ -1,6 +1,6 @@
 ---
 # Backend deployment defaults
-backend_release_path: /opt/cotizacion-app/releases/{{ ansible_date_time.epoch }}
+backend_release_path: /opt/phase4-app/releases/{{ ansible_date_time.epoch }}
 backend_source_dir: ../../../api-sistema-cotizacion/backend
 
 # Environment configuration

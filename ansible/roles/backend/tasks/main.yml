@@ -22,8 +22,8 @@
     group: ec2-user
     mode: '0750'
   loop:
-    - /opt/cotizacion-app/releases
-    - /opt/cotizacion-app/shared
+    - /opt/phase4-app/releases
+    - /opt/phase4-app/shared
 
 - name: Create release directory
   ansible.builtin.file:
@@ -87,7 +87,7 @@
 - name: Update current symlink
   ansible.builtin.file:
     src: "{{ backend_release_path }}"
-    dest: /opt/cotizacion-app/current
+    dest: /opt/phase4-app/current
     state: link
     owner: ec2-user
     group: ec2-user
@@ -95,7 +95,7 @@
 - name: Create .env file
   ansible.builtin.template:
     src: backend.env.j2
-    dest: /opt/cotizacion-app/current/.env
+    dest: /opt/phase4-app/current/.env
     owner: ec2-user
     group: ec2-user
     mode: '0600'
