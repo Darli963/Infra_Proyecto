@@ -66,18 +66,16 @@
     recurse: true
 
 - name: Install npm dependencies
-  ansible.builtin.command:
-    cmd: npm ci --production
-    chdir: "{{ backend_release_path }}"
-  become: true
-  become_user: ec2-user
+  ansible.builtin.shell: |
+    runuser -u ec2-user -- bash -lc 'cd {{ backend_release_path }} && npm ci --production'
+  register: npm_install
+  changed_when: true
 
 - name: Generate Prisma client
-  ansible.builtin.command:
-    cmd: npx prisma generate
-    chdir: "{{ backend_release_path }}"
-  become: true
-  become_user: ec2-user
+  ansible.builtin.shell: |
+    runuser -u ec2-user -- bash -lc 'cd {{ backend_release_path }} && npx prisma generate'
+  register: prisma_generate
+  changed_when: true
 
 - name: Fetch database credentials from Secrets Manager
   ansible.builtin.command:
@@ -92,14 +90,10 @@
   no_log: true
 
 - name: Run Prisma migrations
-  ansible.builtin.command:
-    cmd: npx prisma migrate deploy
-    chdir: "{{ backend_release_path }}"
-  environment:
-    DATABASE_URL: "{{ database_url }}"
-  become: true
-  become_user: ec2-user
-  changed_when: false
+  ansible.builtin.shell: |
+    runuser -u ec2-user -- bash -lc 'cd {{ backend_release_path }} && DATABASE_URL="{{ database_url }}" npx prisma migrate deploy'
+  register: prisma_migrate
+  changed_when: true
   no_log: true
 
 - name: Update current symlink
