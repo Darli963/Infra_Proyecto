@@ -84,9 +84,14 @@
   changed_when: false
   no_log: true
 
-- name: Set DATABASE_URL from secret
+- name: Parse database secret
   ansible.builtin.set_fact:
-    database_url: "{{ db_secret.stdout | from_json | json_query('DATABASE_URL') }}"
+    db_secret_data: "{{ db_secret.stdout | from_json }}"
+  no_log: true
+
+- name: Build DATABASE_URL from secret fields
+  ansible.builtin.set_fact:
+    database_url: "postgresql://{{ db_secret_data.username | urlencode }}:{{ db_secret_data.password | urlencode }}@{{ db_secret_data.host }}:{{ db_secret_data.port | default('5432') }}/{{ db_secret_data.dbname }}?sslmode=require"
   no_log: true
 
 - name: Run Prisma migrations
