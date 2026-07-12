@@ -1,0 +1,19 @@
+[Unit]
+Description=Cotizacion App Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/opt/cotizacion-app/current
+EnvironmentFile=/opt/cotizacion-app/current/.env
+ExecStart=/usr/bin/node /opt/cotizacion-app/current/start.js
+StandardOutput=append:/var/log/cotizacion-app.log
+StandardError=append:/var/log/cotizacion-app.log
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

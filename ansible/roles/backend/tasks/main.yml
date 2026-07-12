@@ -52,14 +52,12 @@
     cmd: npm ci --production
     chdir: "{{ backend_release_path }}"
   become: true
-  become_user: ec2-user
 
 - name: Generate Prisma client
   ansible.builtin.command:
     cmd: npx prisma generate
     chdir: "{{ backend_release_path }}"
   become: true
-  become_user: ec2-user
 
 - name: Fetch database credentials from Secrets Manager
   ansible.builtin.command:
@@ -70,7 +68,7 @@
 
 - name: Set DATABASE_URL from secret
   ansible.builtin.set_fact:
-    database_url: "{{ db_secret.stdout | from_json | json_query('DATABASE_URL') }}"
+    database_url: "postgresql://{{ (db_secret.stdout | from_json).username }}:{{ (db_secret.stdout | from_json).password | urlencode }}@{{ (db_secret.stdout | from_json).host }}:{{ (db_secret.stdout | from_json).port }}/{{ (db_secret.stdout | from_json).dbname }}"
   no_log: true
 
 - name: Run Prisma migrations
@@ -80,7 +78,6 @@
   environment:
     DATABASE_URL: "{{ database_url }}"
   become: true
-  become_user: ec2-user
   changed_when: false
   no_log: true
 
@@ -100,6 +97,16 @@
     group: ec2-user
     mode: '0600'
   notify: restart cotizacion-app
+
+- name: Create systemd unit for cotizacion-app
+  ansible.builtin.template:
+    src: backend.service.j2
+    dest: /etc/systemd/system/cotizacion-app.service
+    mode: "0644"
+  notify: restart cotizacion-app
+
+- name: Flush handlers before starting service
+  ansible.builtin.meta: flush_handlers
 
 - name: Ensure cotizacion-app service is running
   ansible.builtin.systemd:

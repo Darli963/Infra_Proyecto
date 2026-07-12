@@ -37,7 +37,7 @@ async function resolveDbUrl() {
 resolveDbUrl()
   .then(() => {
     // Arranca el servidor compilado
-    require("./dist/server.js");
+    require("./dist/src/server.js");
   })
   .catch((err) => {
     console.error("[start] Error al resolver configuración:", err);
