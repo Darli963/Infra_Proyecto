@@ -16,6 +16,7 @@ export interface Motorcycle {
   currency: string;
   category: string;
   description: string | null;
+  active: boolean;
   images: MotorcycleImage[];
 }
 
