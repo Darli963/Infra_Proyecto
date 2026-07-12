@@ -1,6 +1,6 @@
 ---
 # Backend deployment variables for dev environment
-# Last updated: 2026-07-09 — values from terraform apply (account 138576548748)
+# Last updated: 2026-07-12 — values from terraform apply (account 138576548748)
 
 # Aurora secret name from Terraform
 backend_aurora_secret_name: "infra-proyecto/dev/aurora"
@@ -13,14 +13,18 @@ backend_auth_provider: "cognito"
 
 # Values from Terraform outputs
 backend_s3_bucket_name: "infra-proyecto-dev-storage-138576548748"
-backend_cloudfront_url: "https://dv6xa36yi5uz2.cloudfront.net"
-backend_cognito_user_pool_id: "us-east-1_Ti0dtrUZr"
-backend_cognito_client_id: "2giq9vq73dt85h25tabkho3ag"
+backend_cloudfront_url: "https://d1xm2s667wlfyj.cloudfront.net"
+backend_cognito_user_pool_id: "us-east-1_MTtmh6vlY"
+backend_cognito_client_id: "tc67uk5ftfk7cjinbgfdngds6"
 
 # CloudFront distribution ID (needed for cache invalidation in deploy_frontend.yml)
-frontend_cloudfront_distribution_id: "E2CJEFFJJPP7LE"
-frontend_cloudfront_domain: "dv6xa36yi5uz2.cloudfront.net"
+frontend_cloudfront_distribution_id: "E2N98A0ZROVX76"
+frontend_cloudfront_domain: "d1xm2s667wlfyj.cloudfront.net"
 frontend_s3_bucket: "infra-proyecto-dev-storage-138576548748"
 frontend_aws_region: "us-east-1"
-frontend_cognito_user_pool_id: "us-east-1_Ti0dtrUZr"
-frontend_cognito_client_id: "2giq9vq73dt85h25tabkho3ag"
+frontend_cognito_user_pool_id: "us-east-1_MTtmh6vlY"
+frontend_cognito_client_id: "tc67uk5ftfk7cjinbgfdngds6"
+
+
+# Override de phase4_aurora_secret_name para entorno dev
+phase4_aurora_secret_name: "infra-proyecto/dev/aurora"
