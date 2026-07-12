@@ -52,10 +52,9 @@
         ci: true
 
     - name: Build frontend
-      community.general.npm:
-        path: "{{ frontend_source_dir }}"
-        production: true
-        command: run build
+      ansible.builtin.command:
+        cmd: npm run build
+        chdir: "{{ frontend_source_dir }}"
 
     - name: Check if dist directory exists
       ansible.builtin.stat:
@@ -68,10 +67,10 @@
       when: not frontend_dist.stat.exists
 
     - name: Sync frontend to S3
-      amazon.aws.s3_sync:
+      community.aws.s3_sync:
         bucket: "{{ frontend_s3_bucket }}"
-        prefix: frontend/
-        src: "{{ frontend_dist_dir }}/"
+        key_prefix: frontend/
+        file_root: "{{ frontend_dist_dir }}/"
         delete: true
         cache_control: "public,max-age=31536000,immutable"
         exclude: "index.html"
@@ -80,17 +79,17 @@
     - name: Upload index.html without aggressive caching
       amazon.aws.s3_object:
         bucket: "{{ frontend_s3_bucket }}"
-        key: frontend/index.html
+        object: frontend/index.html
         src: "{{ frontend_dist_dir }}/index.html"
-        cache_control: "no-cache,no-store,must-revalidate"
+        headers:
+          CacheControl: "no-cache,no-store,must-revalidate"
         region: "{{ frontend_aws_region }}"
         mode: put
 
     - name: Create CloudFront invalidation
-      amazon.aws.cloudfront_invalidation:
-        distribution_id: "{{ frontend_cloudfront_distribution_id | default(omit) }}"
-        distribution_domain_name: "{{ frontend_cloudfront_domain }}"
-        invalidation_paths:
+      community.aws.cloudfront_invalidation:
+        distribution_id: "{{ frontend_cloudfront_distribution_id }}"
+        target_paths:
           - "/*"
         region: "{{ frontend_aws_region }}"
       when: frontend_cloudfront_distribution_id is defined
