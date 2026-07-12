@@ -1,7 +1,7 @@
 resource "random_password" "master_password" {
   length           = 24
   special          = true
-  override_special = "!@#$%*-_=+?"
+  override_special = "!#$%*-_=+?"
 }
 
 resource "aws_db_subnet_group" "this" {
