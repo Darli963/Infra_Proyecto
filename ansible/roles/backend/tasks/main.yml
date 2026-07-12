@@ -210,37 +210,10 @@
   failed_when: false
 
 # ---------------------------------------------------------------------------
-# 13. Prueba manual con captura de stdout+stderr
-#     Identifica errores ANTES de intentar arrancar via systemd
+# 13. Diagnóstico completo ANTES de arrancar systemd
 # ---------------------------------------------------------------------------
-- name: Test starting app manually to capture early errors (stdout+stderr)
-  ansible.builtin.shell: |
-    runuser -u ec2-user -- bash -lc '
-      set -a
-      source /opt/phase4-app/current/.env
-      set +a
-      cd /opt/phase4-app/current
-      node start.js 2>&1 &
-      NODE_PID=$!
-      sleep 5
-      if kill -0 $NODE_PID 2>/dev/null; then
-        echo "[OK] Node sigue corriendo despues de 5s (buen signo)"
-        kill $NODE_PID 2>/dev/null || true
-      else
-        echo "[FAIL] Node termino antes de 5s"
-      fi
-    '
-  register: manual_test
-  changed_when: false
-  ignore_errors: true
 
-- name: Show manual test output (stdout+stderr combined)
-  ansible.builtin.debug:
-    msg: "{{ manual_test.stdout_lines + manual_test.stderr_lines }}"
-
-# ---------------------------------------------------------------------------
-# 14. Verificar que dist/server.js existe en la EC2
-# ---------------------------------------------------------------------------
+# 13a. Verificar que dist/server.js existe
 - name: Verify dist/server.js exists on target
   ansible.builtin.stat:
     path: /opt/phase4-app/current/dist/server.js
@@ -248,18 +221,60 @@
 
 - name: Show dist/server.js status
   ansible.builtin.debug:
-    msg: >
-      dist/server.js {{ 'EXISTS' if server_js_check.stat.exists else 'MISSING - build not copied correctly' }}
+    msg: "dist/server.js {{ 'EXISTS' if server_js_check.stat.exists else 'MISSING — build no se copió correctamente' }}"
 
 - name: List dist/ contents on target
-  ansible.builtin.command: ls -la /opt/phase4-app/current/dist/
+  ansible.builtin.shell: ls -la /opt/phase4-app/current/dist/ 2>&1 || echo "dist/ no existe"
   register: dist_target_contents
   changed_when: false
-  ignore_errors: true
 
 - name: Show dist/ contents on target
   ansible.builtin.debug:
     var: dist_target_contents.stdout_lines
+
+# 13b. Verificar que node_modules existe y que @prisma/client está
+- name: Check node_modules and prisma client
+  ansible.builtin.shell: |
+    echo "=== node_modules exists ==="
+    ls /opt/phase4-app/current/node_modules/.bin/prisma 2>&1 || echo "prisma CLI NOT FOUND"
+    echo "=== @prisma/client ==="
+    ls /opt/phase4-app/current/node_modules/@prisma/client/index.js 2>&1 || echo "@prisma/client NOT FOUND"
+    echo "=== prisma query engine ==="
+    find /opt/phase4-app/current/node_modules/.prisma -name "*.so*" -o -name "libquery*" 2>/dev/null | head -5 || echo "No native binaries found"
+    echo "=== .env exists ==="
+    ls -la /opt/phase4-app/current/.env 2>&1 || echo ".env NOT FOUND"
+  register: module_check
+  changed_when: false
+  ignore_errors: true
+
+- name: Show module check
+  ansible.builtin.debug:
+    var: module_check.stdout_lines
+
+# 13c. Prueba síncrona: ejecutar node start.js con timeout y capturar TODO
+#      Se ejecuta como script separado para que stdout+stderr lleguen a Ansible
+- name: Run node start.js synchronously to capture real error
+  ansible.builtin.shell: |
+    set -a
+    source /opt/phase4-app/current/.env
+    set +a
+    export HOME=/home/ec2-user
+    cd /opt/phase4-app/current
+    timeout 10s /usr/bin/node start.js 2>&1
+    echo "EXIT_CODE=$?"
+  register: node_direct_test
+  changed_when: false
+  ignore_errors: true
+  become_user: ec2-user
+
+- name: Show node direct test output (THE REAL ERROR IS HERE)
+  ansible.builtin.debug:
+    var: node_direct_test.stdout_lines
+
+- name: Show node direct test stderr if any
+  ansible.builtin.debug:
+    var: node_direct_test.stderr_lines
+  when: node_direct_test.stderr_lines | length > 0
 
 # ---------------------------------------------------------------------------
 # 15. Arrancar y habilitar el servicio
@@ -276,15 +291,17 @@
     timeout: 20
 
 # ---------------------------------------------------------------------------
-# 16. Diagnóstico post-arranque — stdout_lines Y stderr_lines
+# 16. Diagnóstico post-arranque — captura el error real de Node
 # ---------------------------------------------------------------------------
-- name: Get cotizacion-app journal logs (full output)
-  ansible.builtin.shell: journalctl -u cotizacion-app -b --no-pager --no-hostname -o short-precise -n 150 2>&1
+- name: Get cotizacion-app journal logs since last boot (full, no truncation)
+  ansible.builtin.shell: |
+    journalctl -u cotizacion-app -b --no-pager --no-hostname \
+      -o cat -n 200 2>&1
   register: service_logs
   changed_when: false
   ignore_errors: true
 
-- name: Show cotizacion-app journal logs
+- name: Show cotizacion-app journal logs (THE ERROR MESSAGE FROM NODE)
   ansible.builtin.debug:
     var: service_logs.stdout_lines
 
