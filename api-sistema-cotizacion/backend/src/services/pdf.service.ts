@@ -87,7 +87,7 @@ export function buildQuotePdf(sim: SimData): Readable {
     ["Año",          String(moto.year)],
     ["Cilindraje",   `${moto.engineCC} cc`],
     ["Categoría",    moto.category],
-    ["Precio base",  money(sim.basePrice, currency)],
+    ["Precio base",  money(Number(sim.basePrice), currency)],
   ];
   for (const [label, value] of motoLines) {
     doc.fontSize(9).font("Helvetica-Bold").fillColor(GRAY).text(label, 58, y, { continued: true });
