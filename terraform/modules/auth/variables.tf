@@ -24,3 +24,10 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "cognito_domain_suffix" {
+  description = "Sufijo opcional que se añade al domain prefix de Cognito para garantizar unicidad global (ej. account ID). Si es null se usa el patrón por defecto project_name-environment."
+  type        = string
+  default     = null
+  nullable    = true
+}

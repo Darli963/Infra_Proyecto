@@ -1,8 +1,9 @@
 ---
 # Backend deployment variables for dev environment
+# Last updated: 2026-07-09 — values from terraform apply (account 138576548748)
 
 # Aurora secret name from Terraform
-backend_aurora_secret_name: "infra-proyecto/dev/aurora-new"
+backend_aurora_secret_name: "infra-proyecto/dev/aurora"
 
 # Node environment
 backend_node_env: "development"
@@ -10,8 +11,16 @@ backend_node_env: "development"
 # Auth provider
 backend_auth_provider: "cognito"
 
-# Values from Terraform outputs (set at runtime via extra-vars)
-# backend_s3_bucket_name: "{{ terraform_output_app_bucket_name }}"
-# backend_cloudfront_url: "{{ terraform_output_cloudfront_url }}"
-# backend_cognito_user_pool_id: "{{ terraform_output_user_pool_id }}"
-# backend_cognito_client_id: "{{ terraform_output_user_pool_client_id }}"
+# Values from Terraform outputs
+backend_s3_bucket_name: "infra-proyecto-dev-storage-138576548748"
+backend_cloudfront_url: "https://dv6xa36yi5uz2.cloudfront.net"
+backend_cognito_user_pool_id: "us-east-1_Ti0dtrUZr"
+backend_cognito_client_id: "2giq9vq73dt85h25tabkho3ag"
+
+# CloudFront distribution ID (needed for cache invalidation in deploy_frontend.yml)
+frontend_cloudfront_distribution_id: "E2CJEFFJJPP7LE"
+frontend_cloudfront_domain: "dv6xa36yi5uz2.cloudfront.net"
+frontend_s3_bucket: "infra-proyecto-dev-storage-138576548748"
+frontend_aws_region: "us-east-1"
+frontend_cognito_user_pool_id: "us-east-1_Ti0dtrUZr"
+frontend_cognito_client_id: "2giq9vq73dt85h25tabkho3ag"

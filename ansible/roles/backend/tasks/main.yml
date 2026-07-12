@@ -63,7 +63,7 @@
 
 - name: Fetch database credentials from Secrets Manager
   ansible.builtin.command:
-    cmd: /usr/local/bin/phase4-fetch-secret {{ backend_aurora_secret_name }}
+    cmd: /usr/local/bin/phase4-fetch-secret {{ backend_aws_region | default('us-east-1') }} {{ backend_aurora_secret_name }}
   register: db_secret
   changed_when: false
   no_log: true

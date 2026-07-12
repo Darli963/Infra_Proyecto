@@ -11,7 +11,7 @@ terraform {
 
 locals {
   common_tags   = merge({ Module = "auth" }, var.tags)
-  domain_prefix = "${var.project_name}-${var.environment}"
+  domain_prefix = var.cognito_domain_suffix != null ? "${var.project_name}-${var.environment}-${var.cognito_domain_suffix}" : "${var.project_name}-${var.environment}"
 }
 
 data "aws_region" "current" {}

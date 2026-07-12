@@ -26,7 +26,7 @@ redis_port                             = 6379
 external_database_egress_cidrs         = []
 
 # Storage
-app_bucket_name           = "infra-proyecto-dev-storage-phase3-example"
+app_bucket_name           = "infra-proyecto-dev-storage-138576548748"
 bucket_versioning_enabled = true
 bucket_force_destroy      = false
 
@@ -91,7 +91,8 @@ enable_api_gateway    = true
 enable_jwt_authorizer = true
 
 # Auth (Cognito)
-enable_auth = true
+enable_auth           = true
+cognito_domain_suffix = "138576548748"
 
 # Secrets Manager
 app_config_secret_name = "infra-proyecto/dev/app-config"

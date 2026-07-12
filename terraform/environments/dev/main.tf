@@ -183,11 +183,12 @@ module "auth" {
   count  = var.enable_auth ? 1 : 0
   source = "../../modules/auth"
 
-  enabled      = var.enable_auth
-  name         = local.name_prefix
-  project_name = var.project_name
-  environment  = var.environment
-  tags         = local.common_tags
+  enabled               = var.enable_auth
+  name                  = local.name_prefix
+  project_name          = var.project_name
+  environment           = var.environment
+  cognito_domain_suffix = var.cognito_domain_suffix
+  tags                  = local.common_tags
 }
 
 module "api_gateway" {
