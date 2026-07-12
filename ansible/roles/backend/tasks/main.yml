@@ -118,6 +118,13 @@
     mode: '0600'
   notify: restart cotizacion-app
 
+- name: Create systemd service file for cotizacion-app
+  ansible.builtin.template:
+    src: cotizacion-app.service.j2
+    dest: /etc/systemd/system/cotizacion-app.service
+    mode: '0644'
+  notify: restart cotizacion-app
+
 - name: Ensure cotizacion-app service is running
   ansible.builtin.systemd:
     name: cotizacion-app
