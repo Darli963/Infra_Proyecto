@@ -211,6 +211,27 @@ jobs:
           set -euo pipefail
 
           echo "Validando health check en https://${CLOUDFRONT_DOMAIN}/api/healthz"
-          curl -f https://${CLOUDFRONT_DOMAIN}/api/healthz
 
-          echo "Despliegue validado exitosamente"
+          # Reintentar hasta 10 veces con 15s de espera entre intentos
+          # CloudFront puede tardar en propagar cambios del WAF/distribución
+          for attempt in $(seq 1 10); do
+            status=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 30 \
+              "https://${CLOUDFRONT_DOMAIN}/api/healthz" || true)
+
+            echo "Intento ${attempt}/10 — HTTP ${status}"
+
+            if [ "${status}" = "200" ]; then
+              echo "Health check exitoso (HTTP 200)"
+              echo "Despliegue validado exitosamente"
+              exit 0
+            fi
+
+            if [ "${attempt}" -lt 10 ]; then
+              echo "Esperando 15s antes del siguiente intento..."
+              sleep 15
+            fi
+          done
+
+          echo "::error::Health check falló después de 10 intentos. Último HTTP status: ${status}"
+          exit 1
