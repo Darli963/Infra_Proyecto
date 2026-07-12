@@ -1,5 +1,4 @@
-- name: Instalar colecciones de Ansible
-  run: ansible-galaxy collection install amazon.aws community.awsplugin: amazon.aws.aws_ec2
+plugin: amazon.aws.aws_ec2
 regions:
   - us-east-1
 
