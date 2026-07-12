@@ -15,8 +15,21 @@ variable "vpc_id" {
 }
 
 variable "public_subnet_ids" {
-  description = "Subnets publicas donde se desplegara el ALB."
+  description = "Subnets publicas donde se desplegara el ALB (usado cuando internal = false)."
   type        = list(string)
+  default     = []
+}
+
+variable "private_subnet_ids" {
+  description = "Subnets privadas donde se desplegara el ALB interno."
+  type        = list(string)
+  default     = []
+}
+
+variable "internal" {
+  description = "Si es true, el ALB es interno (solo accesible desde dentro del VPC, p.ej. via VPC Link)."
+  type        = bool
+  default     = false
 }
 
 variable "security_group_id" {

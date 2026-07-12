@@ -22,10 +22,10 @@ resource "aws_lb" "this" {
   count = var.enabled ? 1 : 0
 
   name               = substr("${var.name}-alb", 0, 32)
-  internal           = false
+  internal           = var.internal
   load_balancer_type = "application"
   security_groups    = [var.security_group_id]
-  subnets            = var.public_subnet_ids
+  subnets            = var.internal ? var.private_subnet_ids : var.public_subnet_ids
 
   enable_deletion_protection = var.enable_deletion_protection
 

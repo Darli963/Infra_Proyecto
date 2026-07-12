@@ -34,6 +34,22 @@ resource "aws_security_group" "vpc_link" {
   tags = merge(local.common_tags, { Name = "${var.name}-apigw-vpc-link-sg" })
 }
 
+# Regla de ingress en el SG del ALB para permitir tráfico desde el VPC Link
+# El SG del ALB solo acepta tráfico del prefix list de CloudFront por defecto,
+# pero el VPC Link genera tráfico desde dentro del VPC — se necesita esta regla
+# para que API Gateway → VPC Link → ALB funcione.
+resource "aws_security_group_rule" "vpc_link_to_alb" {
+  count = var.enabled && var.alb_security_group_id != null ? 1 : 0
+
+  type                     = "ingress"
+  description              = "API Gateway VPC Link hacia ALB puerto 80"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.vpc_link[0].id
+  security_group_id        = var.alb_security_group_id
+}
+
 resource "aws_apigatewayv2_vpc_link" "this" {
   count              = var.enabled ? 1 : 0
   name               = "${var.name}-vpc-link"

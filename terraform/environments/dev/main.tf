@@ -168,6 +168,8 @@ module "edge" {
   name                       = "${local.name_prefix}-app"
   vpc_id                     = module.networking.vpc_id
   public_subnet_ids          = module.networking.public_subnet_ids
+  private_subnet_ids         = module.networking.private_subnet_ids
+  internal                   = true
   security_group_id          = module.security_base.security_group_ids.alb
   listener_port              = var.load_balancer_listener_port
   target_port                = var.load_balancer_target_port

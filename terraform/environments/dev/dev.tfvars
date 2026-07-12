@@ -14,12 +14,11 @@ map_public_ip_on_launch = true
 single_nat_gateway      = false
 
 # Security Groups
-# NOTA: alb_ingress_cidrs NO se aplica cuando alb_ingress_use_cloudfront_prefix_list = true.
-# security_base ignora estos CIDRs y usa el managed prefix list de CloudFront origin-facing.
-# El valor se mantiene para no romper entornos donde alb_ingress_use_cloudfront_prefix_list = false.
+# ALB es interno — solo acepta tráfico del VPC Link (API Gateway)
+# No necesita el CloudFront prefix list porque no es accesible desde internet
 alb_ingress_cidrs                      = ["0.0.0.0/0"]
 alb_ingress_ports                      = [80]
-alb_ingress_use_cloudfront_prefix_list = true
+alb_ingress_use_cloudfront_prefix_list = false
 ec2_ingress_ports                      = [3000]
 aurora_port                            = 5432
 redis_port                             = 6379
