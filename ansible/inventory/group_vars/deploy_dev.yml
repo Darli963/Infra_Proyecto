@@ -16,6 +16,7 @@ backend_s3_bucket_name: "infra-proyecto-dev-storage-138576548748"
 backend_cloudfront_url: "https://dv6xa36yi5uz2.cloudfront.net"
 backend_cognito_user_pool_id: "us-east-1_Ti0dtrUZr"
 backend_cognito_client_id: "2giq9vq73dt85h25tabkho3ag"
+backend_cognito_user_pool_endpoint: ""
 
 # CloudFront distribution ID (needed for cache invalidation in deploy_frontend.yml)
 frontend_cloudfront_distribution_id: "E2CJEFFJJPP7LE"

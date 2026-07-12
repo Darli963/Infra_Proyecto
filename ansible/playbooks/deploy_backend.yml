@@ -1,23 +1,33 @@
 ---
 - name: Deploy Cotizacion Backend Application
-  hosts: deploy_dev
+  hosts: "{{ target_hosts | default('deploy_dev') }}"
   become: true
-  
+
   vars_files:
     - inventory/group_vars/all.yml
     - inventory/group_vars/deploy_dev.yml
+
+  vars:
+    # Valor por defecto vacío si no se pasa como -e ni está en group_vars
+    backend_cognito_user_pool_endpoint: "{{ backend_cognito_user_pool_endpoint | default('') }}"
 
   pre_tasks:
     - name: Validate required variables
       ansible.builtin.assert:
         that:
           - backend_aurora_secret_name is defined
+          - backend_aurora_secret_name | length > 0
           - backend_s3_bucket_name is defined
+          - backend_s3_bucket_name | length > 0
           - backend_cloudfront_url is defined
+          - backend_cloudfront_url | length > 0
           - backend_cognito_user_pool_id is defined
+          - backend_cognito_user_pool_id | length > 0
           - backend_cognito_client_id is defined
-          - backend_cognito_user_pool_endpoint is defined
-        fail_msg: "Required variables are not defined. Pass them via -e or set in inventory."
+          - backend_cognito_client_id | length > 0
+        fail_msg: >
+          Required variables are not defined. Pass them via -e or set in group_vars.
+          backend_cognito_user_pool_endpoint is optional (defaults to empty string).
 
     - name: Check if backend source directory exists
       ansible.builtin.stat:
