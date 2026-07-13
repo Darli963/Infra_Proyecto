@@ -23,10 +23,15 @@ cd /opt/monitoring
 # Obtener la contrasena de Grafana desde Secrets Manager
 SECRET_VAL=$(aws secretsmanager get-secret-value --secret-id "${grafana_secret_name}" --region "${aws_region}" --query SecretString --output text)
 if echo "$SECRET_VAL" | jq -e . >/dev/null 2>&1; then
-  export GF_SECURITY_ADMIN_PASSWORD=$(echo "$SECRET_VAL" | jq -r '.admin_password // .password // .')
+  GF_SECURITY_ADMIN_PASSWORD=$(echo "$SECRET_VAL" | jq -r '.admin_password // .password // .')
 else
-  export GF_SECURITY_ADMIN_PASSWORD="$SECRET_VAL"
+  GF_SECURITY_ADMIN_PASSWORD="$SECRET_VAL"
 fi
+
+# Guardar la contrasena en el archivo .env para docker-compose
+echo "GF_SECURITY_ADMIN_PASSWORD=$GF_SECURITY_ADMIN_PASSWORD" > /opt/monitoring/.env
+chmod 600 /opt/monitoring/.env
+export GF_SECURITY_ADMIN_PASSWORD
 
 # Crear estructura de carpetas
 mkdir -p prometheus loki alloy grafana/provisioning/datasources grafana/provisioning/dashboards

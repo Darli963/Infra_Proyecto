@@ -60,6 +60,11 @@ chown -R ec2-user:ec2-user "${app_base_dir}/current"
 
 runuser -u ec2-user -- bash -lc "cd '${app_base_dir}/current' && npm install --omit=dev"
 
+# Crear directorio de logs para la aplicacion
+mkdir -p /var/log/app
+chown -R ec2-user:ec2-user /var/log/app
+chmod 755 /var/log/app
+
 cat > /etc/systemd/system/${app_service_name}.service <<EOF
 [Unit]
 Description=Smoke app de validacion para balanceo y escalado
@@ -74,6 +79,8 @@ EnvironmentFile=${app_base_dir}/current/.env
 ExecStart=/usr/bin/node ${app_base_dir}/current/server.js
 Restart=always
 RestartSec=5
+StandardOutput=append:/var/log/app/app.log
+StandardError=append:/var/log/app/app.log
 
 [Install]
 WantedBy=multi-user.target

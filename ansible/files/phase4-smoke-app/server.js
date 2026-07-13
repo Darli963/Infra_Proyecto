@@ -124,6 +124,7 @@ const server = http.createServer(async (request, response) => {
         database: result
       });
     } catch (error) {
+      console.error(JSON.stringify({ level: "error", message: `Fallo db-check: ${error.message}`, timestamp: new Date().toISOString() }));
       return respondJson(response, 500, {
         status: "error",
         message: error.message

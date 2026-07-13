@@ -140,7 +140,9 @@ resource "aws_iam_policy" "monitoring" {
         Effect = "Allow"
         Action = [
           "cloudwatch:GetMetricData",
-          "cloudwatch:ListMetrics"
+          "cloudwatch:ListMetrics",
+          "cloudwatch:GetMetricStatistics",
+          "tag:GetResources"
         ]
         Resource = "*"
       },
