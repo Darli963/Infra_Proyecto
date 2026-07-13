@@ -610,13 +610,13 @@ variable "observability_rds_cpu_threshold" {
 variable "enable_node_exporter" {
   description = "Activa la instalacion de node_exporter y Alloy en el ASG."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_monitoring" {
   description = "Activa el modulo de monitoreo dedicado."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "key_pair_name" {
