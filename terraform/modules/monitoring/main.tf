@@ -183,6 +183,11 @@ resource "aws_iam_role_policy_attachment" "monitoring" {
   policy_arn = aws_iam_policy.monitoring.arn
 }
 
+resource "aws_iam_role_policy_attachment" "monitoring_ssm" {
+  role       = aws_iam_role.monitoring.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "monitoring" {
   name = "${var.environment}-monitoring-profile"
   role = aws_iam_role.monitoring.name
