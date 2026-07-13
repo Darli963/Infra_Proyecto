@@ -256,6 +256,7 @@ module "compute_group" {
   cpu_target_value              = 80
   cpu_disable_scale_in          = false
   cpu_estimated_instance_warmup = 180
+  enable_node_exporter          = var.enable_node_exporter
   tags                          = local.common_tags
 
   depends_on = [
@@ -329,3 +330,21 @@ module "networking" {
   single_nat_gateway      = var.single_nat_gateway
   tags                    = local.common_tags
 }
+
+module "monitoring" {
+  count  = var.enable_monitoring ? 1 : 0
+  source = "../../modules/monitoring"
+
+  vpc_id              = module.networking.vpc_id
+  private_subnet_ids  = module.networking.private_subnet_ids
+  key_pair_name       = var.key_pair_name
+  app_asg_name        = module.compute_group.autoscaling_group_name
+  alb_arn_suffix      = var.enable_load_balancer ? replace(split(":", module.edge.alb_arn)[5], "loadbalancer/", "") : ""
+  aurora_cluster_id   = local.database_cluster_id
+  sns_topic_arn       = module.observability.sns_topic_arn
+  grafana_secret_name = var.grafana_secret_name
+  admin_cidr          = var.admin_cidr
+  environment         = var.environment
+  log_group_name      = module.observability.app_log_group_name
+}
+
