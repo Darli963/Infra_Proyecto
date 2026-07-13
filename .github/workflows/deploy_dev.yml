@@ -341,9 +341,48 @@ jobs:
 
       - name: Validar que Grafana, Prometheus y Loki respondan
         run: |
+          set -euo pipefail
+          instance_id="${{ needs.deploy-infra.outputs.monitoring_instance_id }}"
+          
           COMMAND_ID=$(aws ssm send-command \
-            --instance-ids ${{ needs.deploy-infra.outputs.monitoring_instance_id }} \
+            --instance-ids "$instance_id" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=["for i in {1..30}; do if curl -sf http://localhost:3000/api/health && curl -sf http://localhost:9090/-/healthy && curl -sf http://localhost:3100/ready; then echo \"Monitoreo OK\"; exit 0; fi; echo \"Esperando inicio...\"; sleep 10; done; exit 1"]' \
             --query "Command.CommandId" --output text)
-          aws ssm wait command-executed --command-id $COMMAND_ID --instance-id ${{ needs.deploy-infra.outputs.monitoring_instance_id }}
+          
+          echo "Comando SSM enviado. ID: $COMMAND_ID. Esperando ejecucion..."
+          
+          for attempt in $(seq 1 45); do
+            status=$(aws ssm list-commands \
+              --region "${AWS_REGION}" \
+              --command-id "$COMMAND_ID" \
+              --query "Commands[0].Status" \
+              --output text)
+            
+            echo "Estado del comando (intento $attempt/45): $status"
+            
+            if [ "$status" = "Success" ]; then
+              echo "Validacion exitosa!"
+              aws ssm get-command-invocation \
+                --region "${AWS_REGION}" \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$instance_id" \
+                --query "StandardOutputContent" --output text
+              exit 0
+            fi
+            
+            if [ "$status" = "Failed" ] || [ "$status" = "Cancelled" ] || [ "$status" = "TimedOut" ]; then
+              echo "::error::El comando de validacion fallo con estado: $status"
+              aws ssm get-command-invocation \
+                --region "${AWS_REGION}" \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$instance_id" \
+                --query "[StandardOutputContent, StandardErrorContent]" --output json
+              exit 1
+            fi
+            
+            sleep 10
+          done
+          
+          echo "::error::Tiempo de espera agotado esperando la ejecucion del comando."
+          exit 1
