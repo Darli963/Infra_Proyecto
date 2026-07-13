@@ -187,3 +187,10 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_node_exporter" {
+  description = "Si es true, instala y ejecuta node_exporter y Alloy natively en el bootstrap de las instancias."
+  type        = bool
+  default     = false
+}
+

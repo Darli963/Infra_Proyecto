@@ -79,6 +79,16 @@ resource "aws_iam_role_policy" "instance_runtime" {
           ]
           Resource = var.db_connect_resource_arns
         }
+      ] : [],
+      var.enable_node_exporter ? [
+        {
+          Sid    = "DescribeInstancesForMonitoring"
+          Effect = "Allow"
+          Action = [
+            "ec2:DescribeInstances"
+          ]
+          Resource = "*"
+        }
       ] : []
     )
   })
@@ -110,6 +120,7 @@ resource "aws_launch_template" "this" {
     aws_region           = var.aws_region
     database_secret_name = var.database_secret_name
     nodejs_major_version = var.nodejs_major_version
+    enable_node_exporter = var.enable_node_exporter
   }))
 
   metadata_options {

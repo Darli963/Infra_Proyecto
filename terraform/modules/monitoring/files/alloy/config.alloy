@@ -1,0 +1,11 @@
+loki.source.cloudwatch "cw_logs" {
+  region         = "${aws_region}"
+  log_group_name = "${log_group_name}"
+  forward_to     = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

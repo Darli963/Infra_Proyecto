@@ -232,3 +232,19 @@ output "cognito_user_pool_endpoint" {
   description = "Endpoint (issuer) del User Pool de Cognito."
   value       = var.enable_auth ? module.auth[0].user_pool_endpoint : null
 }
+
+output "monitoring_instance_id" {
+  description = "ID de la instancia EC2 de monitoreo."
+  value       = one(module.monitoring[*].monitoring_instance_id)
+}
+
+output "grafana_private_ip" {
+  description = "IP privada de la instancia de monitoreo."
+  value       = one(module.monitoring[*].grafana_private_ip)
+}
+
+output "grafana_url" {
+  description = "URL interna para acceder a Grafana."
+  value       = one(module.monitoring[*].grafana_url)
+}
+

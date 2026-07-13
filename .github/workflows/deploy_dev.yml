@@ -19,12 +19,26 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION != '' && vars.AWS_REGION || 'us-east-1' }}
   TF_IN_AUTOMATION: "true"
   AWS_EC2_METADATA_DISABLED: "true"
+  ENVIRONMENT: "dev"
 
 jobs:
-  deploy-dev:
-    name: Terraform apply + app deploy dev
+  deploy-infra:
+    name: Terraform apply dev
     runs-on: ubuntu-latest
     environment: dev
+    timeout-minutes: 20
+    outputs:
+      monitoring_instance_id: ${{ steps.tf-outputs.outputs.monitoring_instance_id }}
+      grafana_private_ip: ${{ steps.tf-outputs.outputs.grafana_private_ip }}
+      grafana_url: ${{ steps.tf-outputs.outputs.grafana_url }}
+      storage_bucket_name: ${{ steps.tf-outputs.outputs.storage_bucket_name }}
+      cloudfront_domain: ${{ steps.tf-outputs.outputs.cloudfront_domain }}
+      cloudfront_distribution_id: ${{ steps.tf-outputs.outputs.cloudfront_distribution_id }}
+      cognito_user_pool_id: ${{ steps.tf-outputs.outputs.cognito_user_pool_id }}
+      cognito_client_id: ${{ steps.tf-outputs.outputs.cognito_client_id }}
+      cognito_user_pool_endpoint: ${{ steps.tf-outputs.outputs.cognito_user_pool_endpoint }}
+      aurora_secret_name: ${{ steps.tf-outputs.outputs.aurora_secret_name }}
+      test_instance_id: ${{ steps.tf-outputs.outputs.test_instance_id }}
 
     steps:
       - name: Checkout repository
@@ -67,11 +81,22 @@ jobs:
             -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}" \
             -backend-config="encrypt=true"
 
+      - name: Purgar secretos pendientes de eliminación (solo dev)
+        if: env.ENVIRONMENT == 'dev'
+        run: |
+          for s in redis aurora app-config; do
+            STATE=$(aws secretsmanager describe-secret --secret-id "infra-proyecto/dev/$s" --query 'DeletedDate' --output text 2>/dev/null || echo "None")
+            if [ "$STATE" != "None" ]; then
+              aws secretsmanager delete-secret --secret-id "infra-proyecto/dev/$s" --force-delete-without-recovery
+            fi
+          done
+
       - name: Terraform apply
         working-directory: terraform/environments/dev
         run: terraform apply -input=false -auto-approve -var-file="dev.tfvars"
 
       - name: Extract Terraform outputs
+        id: tf-outputs
         working-directory: terraform/environments/dev
         run: |
           set -euo pipefail
@@ -84,6 +109,11 @@ jobs:
           COGNITO_CLIENT_ID=$(terraform output -raw cognito_client_id)
           COGNITO_USER_POOL_ENDPOINT=$(terraform output -raw cognito_user_pool_endpoint)
           TEST_INSTANCE_ID=$(terraform output -raw test_instance_id)
+          
+          # Outputs opcionales del modulo de monitoreo
+          MONITORING_INSTANCE_ID=$(terraform output -raw monitoring_instance_id 2>/dev/null || echo "")
+          GRAFANA_PRIVATE_IP=$(terraform output -raw grafana_private_ip 2>/dev/null || echo "")
+          GRAFANA_URL=$(terraform output -raw grafana_url 2>/dev/null || echo "")
 
           for var in AURORA_SECRET_NAME S3_BUCKET_NAME CLOUDFRONT_DOMAIN CLOUDFRONT_DISTRIBUTION_ID COGNITO_USER_POOL_ID COGNITO_CLIENT_ID COGNITO_USER_POOL_ENDPOINT TEST_INSTANCE_ID; do
             if [ -z "${!var}" ] || [ "${!var}" = "null" ]; then
@@ -92,16 +122,43 @@ jobs:
             fi
           done
 
-          echo "AURORA_SECRET_NAME=${AURORA_SECRET_NAME}" >> $GITHUB_ENV
-          echo "S3_BUCKET_NAME=${S3_BUCKET_NAME}" >> $GITHUB_ENV
-          echo "CLOUDFRONT_DOMAIN=${CLOUDFRONT_DOMAIN}" >> $GITHUB_ENV
-          echo "CLOUDFRONT_DISTRIBUTION_ID=${CLOUDFRONT_DISTRIBUTION_ID}" >> $GITHUB_ENV
-          echo "COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}" >> $GITHUB_ENV
-          echo "COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID}" >> $GITHUB_ENV
-          echo "COGNITO_USER_POOL_ENDPOINT=${COGNITO_USER_POOL_ENDPOINT}" >> $GITHUB_ENV
-          echo "TEST_INSTANCE_ID=${TEST_INSTANCE_ID}" >> $GITHUB_ENV
+          echo "aurora_secret_name=${AURORA_SECRET_NAME}" >> $GITHUB_OUTPUT
+          echo "storage_bucket_name=${S3_BUCKET_NAME}" >> $GITHUB_OUTPUT
+          echo "cloudfront_domain=${CLOUDFRONT_DOMAIN}" >> $GITHUB_OUTPUT
+          echo "cloudfront_distribution_id=${CLOUDFRONT_DISTRIBUTION_ID}" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=${COGNITO_USER_POOL_ID}" >> $GITHUB_OUTPUT
+          echo "cognito_client_id=${COGNITO_CLIENT_ID}" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_endpoint=${COGNITO_USER_POOL_ENDPOINT}" >> $GITHUB_OUTPUT
+          echo "test_instance_id=${TEST_INSTANCE_ID}" >> $GITHUB_OUTPUT
+          echo "monitoring_instance_id=${MONITORING_INSTANCE_ID}" >> $GITHUB_OUTPUT
+          echo "grafana_private_ip=${GRAFANA_PRIVATE_IP}" >> $GITHUB_OUTPUT
+          echo "grafana_url=${GRAFANA_URL}" >> $GITHUB_OUTPUT
 
-          echo "Terraform outputs extracted successfully"
+  deploy-app:
+    name: App deploy dev
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: deploy-infra
+    env:
+      AURORA_SECRET_NAME: ${{ needs.deploy-infra.outputs.aurora_secret_name }}
+      S3_BUCKET_NAME: ${{ needs.deploy-infra.outputs.storage_bucket_name }}
+      CLOUDFRONT_DOMAIN: ${{ needs.deploy-infra.outputs.cloudfront_domain }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ needs.deploy-infra.outputs.cloudfront_distribution_id }}
+      COGNITO_USER_POOL_ID: ${{ needs.deploy-infra.outputs.cognito_user_pool_id }}
+      COGNITO_CLIENT_ID: ${{ needs.deploy-infra.outputs.cognito_client_id }}
+      COGNITO_USER_POOL_ENDPOINT: ${{ needs.deploy-infra.outputs.cognito_user_pool_endpoint }}
+      TEST_INSTANCE_ID: ${{ needs.deploy-infra.outputs.test_instance_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-deploy-app-dev
 
       - name: Build backend
         working-directory: api-sistema-cotizacion/backend
@@ -212,8 +269,6 @@ jobs:
 
           echo "Validando health check en https://${CLOUDFRONT_DOMAIN}/api/healthz"
 
-          # Reintentar hasta 10 veces con 15s de espera entre intentos
-          # CloudFront puede tardar en propagar cambios del WAF/distribución
           for attempt in $(seq 1 10); do
             status=$(curl -s -o /dev/null -w "%{http_code}" \
               --max-time 30 \
@@ -235,3 +290,33 @@ jobs:
 
           echo "::error::Health check falló después de 10 intentos. Último HTTP status: ${status}"
           exit 1
+
+  validate-monitoring:
+    name: Validar stack de monitoreo
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: deploy-infra
+    if: needs.deploy-infra.outputs.monitoring_instance_id != ''
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-monitor-dev
+
+      - name: Esperar a que la instancia de monitoring aparezca en Session Manager
+        run: aws ssm wait instance-online --instance-ids ${{ needs.deploy-infra.outputs.monitoring_instance_id }}
+
+      - name: Validar que Grafana, Prometheus y Loki respondan
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids ${{ needs.deploy-infra.outputs.monitoring_instance_id }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["curl -sf http://localhost:3000/api/health && curl -sf http://localhost:9090/-/healthy && curl -sf http://localhost:3100/ready"]' \
+            --query "Command.CommandId" --output text)
+          aws ssm wait command-executed --command-id $COMMAND_ID --instance-id ${{ needs.deploy-infra.outputs.monitoring_instance_id }}

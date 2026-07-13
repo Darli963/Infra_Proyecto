@@ -604,3 +604,37 @@ variable "observability_rds_cpu_threshold" {
   type        = number
   default     = 80
 }
+
+# --- Observabilidad / Monitoreo ---
+
+variable "enable_node_exporter" {
+  description = "Activa la instalacion de node_exporter y Alloy en el ASG."
+  type        = bool
+  default     = false
+}
+
+variable "enable_monitoring" {
+  description = "Activa el modulo de monitoreo dedicado."
+  type        = bool
+  default     = false
+}
+
+variable "key_pair_name" {
+  description = "Nombre del key pair para acceder a la instancia por SSH."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "grafana_secret_name" {
+  description = "Nombre del secreto en Secrets Manager que contiene la contrasena de Grafana."
+  type        = string
+  default     = "infra-proyecto/dev/grafana"
+}
+
+variable "admin_cidr" {
+  description = "CIDR de administracion autorizado para acceder a Grafana."
+  type        = string
+  default     = "10.0.0.0/16" # Valor por defecto seguro para la VPC
+}
+
