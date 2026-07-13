@@ -156,52 +156,6 @@ resource "aws_security_group" "ec2" {
   description = "Permite trafico de aplicacion unicamente desde el ALB"
   vpc_id      = var.vpc_id
 
-  dynamic "ingress" {
-    for_each = toset(var.ec2_ingress_ports)
-    content {
-      description     = "ALB hacia EC2 puerto ${ingress.value}"
-      from_port       = ingress.value
-      to_port         = ingress.value
-      protocol        = "tcp"
-      security_groups = [aws_security_group.alb.id]
-    }
-  }
-
-  egress {
-    description = "EC2 hacia Aurora"
-    from_port   = var.aurora_port
-    to_port     = var.aurora_port
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  dynamic "egress" {
-    for_each = toset(var.external_database_egress_cidrs)
-    content {
-      description = "EC2 hacia bases de datos externas puerto ${var.aurora_port}"
-      from_port   = var.aurora_port
-      to_port     = var.aurora_port
-      protocol    = "tcp"
-      cidr_blocks = [egress.value]
-    }
-  }
-
-  egress {
-    description = "EC2 hacia Redis"
-    from_port   = var.redis_port
-    to_port     = var.redis_port
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    description = "EC2 hacia servicios de gestion por HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = merge(
     local.common_tags,
     {
@@ -209,6 +163,60 @@ resource "aws_security_group" "ec2" {
       Tier = "compute"
     }
   )
+}
+
+resource "aws_security_group_rule" "ec2_ingress_alb" {
+  for_each = toset([for p in var.ec2_ingress_ports : tostring(p)])
+
+  type                     = "ingress"
+  description              = "ALB hacia EC2 puerto ${each.value}"
+  from_port                = tonumber(each.value)
+  to_port                  = tonumber(each.value)
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ec2.id
+  source_security_group_id = aws_security_group.alb.id
+}
+
+resource "aws_security_group_rule" "ec2_egress_aurora" {
+  type              = "egress"
+  description       = "EC2 hacia Aurora"
+  from_port         = var.aurora_port
+  to_port           = var.aurora_port
+  protocol          = "tcp"
+  security_group_id = aws_security_group.ec2.id
+  cidr_blocks       = [var.vpc_cidr]
+}
+
+resource "aws_security_group_rule" "ec2_egress_external_db" {
+  for_each = toset(var.external_database_egress_cidrs)
+
+  type              = "egress"
+  description       = "EC2 hacia bases de datos externas puerto ${var.aurora_port}"
+  from_port         = var.aurora_port
+  to_port           = var.aurora_port
+  protocol          = "tcp"
+  security_group_id = aws_security_group.ec2.id
+  cidr_blocks       = [each.value]
+}
+
+resource "aws_security_group_rule" "ec2_egress_redis" {
+  type              = "egress"
+  description       = "EC2 hacia Redis"
+  from_port         = var.redis_port
+  to_port           = var.redis_port
+  protocol          = "tcp"
+  security_group_id = aws_security_group.ec2.id
+  cidr_blocks       = [var.vpc_cidr]
+}
+
+resource "aws_security_group_rule" "ec2_egress_https" {
+  type              = "egress"
+  description       = "EC2 hacia servicios de gestion por HTTPS"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  security_group_id = aws_security_group.ec2.id
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 resource "aws_security_group" "aurora" {
