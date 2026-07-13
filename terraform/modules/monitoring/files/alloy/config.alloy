@@ -1,7 +1,16 @@
-loki.source.cloudwatch "cw_logs" {
-  region         = "${aws_region}"
-  log_group_name = "${log_group_name}"
-  forward_to     = [loki.write.local.receiver]
+// Configuración para recolectar logs locales del servidor de monitoreo
+// Región: ${aws_region}
+// Log Group original: ${log_group_name}
+
+local.file_match "syslog" {
+  path_targets = [
+    { "__path__" = "/var/log/*.log" },
+  ]
+}
+
+loki.source.file "syslog" {
+  targets    = local.file_match.syslog.targets
+  forward_to = [loki.write.local.receiver]
 }
 
 loki.write "local" {
