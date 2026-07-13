@@ -4,8 +4,26 @@ data "aws_ssm_parameter" "al2023_ami" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
-data "aws_secretsmanager_secret" "grafana" {
-  name = var.grafana_secret_name
+resource "aws_secretsmanager_secret" "grafana" {
+  name                    = var.grafana_secret_name
+  recovery_window_in_days = 0
+  tags = {
+    Name        = var.grafana_secret_name
+    Environment = var.environment
+  }
+}
+
+resource "random_password" "grafana" {
+  length           = 16
+  special          = true
+  override_special = "!#$%*-_=+?"
+}
+
+resource "aws_secretsmanager_secret_version" "grafana" {
+  secret_id = aws_secretsmanager_secret.grafana.id
+  secret_string = jsonencode({
+    admin_password = random_password.grafana.result
+  })
 }
 
 data "aws_security_group" "app_ec2" {
@@ -144,7 +162,7 @@ resource "aws_iam_policy" "monitoring" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = [
-          data.aws_secretsmanager_secret.grafana.arn
+          aws_secretsmanager_secret.grafana.arn
         ]
       },
       {
