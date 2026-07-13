@@ -17,7 +17,31 @@ export interface Motorcycle {
   category: string;
   description: string | null;
   active: boolean;
+  riskQuestionGroupId: string | null;
+  quoteProfileId: string | null;
   images: MotorcycleImage[];
+}
+
+export interface QuoteProfile {
+  id: string;
+  dealershipId: string;
+  name: string;
+  description: string | null;
+  factor: string;
+  fixedCharge: string;
+  minDownPayment: string;
+  maxMonths: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskQuestionGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+  questions?: RiskQuestion[];
 }
 
 export interface PaginatedResponse<T> {
@@ -30,6 +54,7 @@ export interface PaginatedResponse<T> {
 
 export interface RiskQuestionOption {
   id: string;
+  questionId: string;
   label: string;
   riskFactor: string;
   sortOrder: number;
@@ -41,6 +66,7 @@ export interface RiskQuestion {
   inputType: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TEXT" | "NUMBER" | "BOOLEAN";
   required: boolean;
   sortOrder: number;
+  groupId: string | null;
   options: RiskQuestionOption[];
 }
 
@@ -56,9 +82,14 @@ export interface QuoteResult {
   currency: string;
   breakdown: {
     basePrice: string;
-    ruleName: string | null;
-    ruleFactor: string;
-    ruleCharge: string;
+    ruleName?: string | null;
+    ruleFactor?: string;
+    ruleCharge?: string;
+    profileName?: string | null;
+    profileFactor?: string;
+    profileCharge?: string;
+    minDownPayment?: string;
+    maxMonths?: number;
     riskFactor: string;
     surcharge: string;
     finalPrice: string;

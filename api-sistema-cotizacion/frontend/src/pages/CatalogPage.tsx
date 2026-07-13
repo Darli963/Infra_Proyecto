@@ -3,8 +3,7 @@ import { useFetch } from "../hooks/useFetch";
 import { api } from "../services/api";
 import { MotorcycleCard } from "../components/MotorcycleCard";
 import { Spinner, ErrorMessage } from "../components/Feedback";
-
-const CATEGORIES = ["sport", "touring", "cruiser", "off-road", "scooter"];
+import { CATEGORIES } from "../components/MotorcycleForm";
 
 export default function CatalogPage() {
   const [search,   setSearch]   = useState("");
@@ -40,7 +39,7 @@ export default function CatalogPage() {
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Todas las categorías</option>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
       </div>
 

@@ -14,6 +14,7 @@ export interface RiskQuestionInput {
   required?: boolean;
   sortOrder?: number;
   active?: boolean;
+  groupId?: string | null;
   options?: OptionInput[];
 }
 
@@ -21,14 +22,14 @@ export const riskQuestionService = {
   list() {
     return prisma.riskQuestion.findMany({
       orderBy: { sortOrder: "asc" },
-      include: { options: { orderBy: { sortOrder: "asc" } } },
+      include: { options: { orderBy: { sortOrder: "asc" } }, group: { select: { id: true, name: true } } },
     });
   },
 
   async findOne(id: string) {
     const q = await prisma.riskQuestion.findUnique({
       where: { id },
-      include: { options: { orderBy: { sortOrder: "asc" } } },
+      include: { options: { orderBy: { sortOrder: "asc" } }, group: { select: { id: true, name: true } } },
     });
     if (!q) throw Object.assign(new Error("Pregunta no encontrada"), { status: 404 });
     return q;
@@ -39,6 +40,7 @@ export const riskQuestionService = {
     return prisma.riskQuestion.create({
       data: {
         ...data,
+        groupId: data.groupId ?? null,
         ...(options?.length && {
           options: {
             create: options.map((o, i) => ({

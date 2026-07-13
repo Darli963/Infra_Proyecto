@@ -59,29 +59,52 @@ export interface MotorcycleInput {
   category: string;
   description?: string;
   active?: boolean;
+  riskQuestionGroupId?: string | null;
+  quoteProfileId?: string | null;
   images?: { url: string; altText?: string; isPrimary?: boolean; sortOrder?: number }[];
 }
 
-export interface QuoteRule {
+export interface QuoteProfile {
   id: string;
-  motorcycleId: string | null;
+  dealershipId: string;
   name: string;
+  description: string | null;
   factor: string;
   fixedCharge: string;
-  currency: string;
-  description: string | null;
+  minDownPayment: string;
+  maxMonths: number;
   active: boolean;
-  motorcycle: { id: string; brand: string; model: string } | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface QuoteRuleInput {
+export interface QuoteProfileInput {
   name: string;
   factor: number;
   fixedCharge?: number;
-  currency?: string;
-  motorcycleId?: string | null;
+  minDownPayment?: number;
+  maxMonths?: number;
   description?: string;
   active?: boolean;
+}
+
+export interface RiskQuestionGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+  questions?: RiskQuestion[];
+}
+
+// Para compatibilidad
+export interface QuoteRule extends QuoteProfile {
+  motorcycleId: string | null;
+  currency: string;
+  motorcycle: { id: string; brand: string; model: string } | null;
+}
+export interface QuoteRuleInput extends QuoteProfileInput {
+  currency?: string;
+  motorcycleId?: string | null;
 }
 
 export interface RiskQuestionAdmin {
@@ -91,6 +114,7 @@ export interface RiskQuestionAdmin {
   required: boolean;
   sortOrder: number;
   active: boolean;
+  groupId: string | null;
   options: { id: string; label: string; riskFactor: string; sortOrder: number }[];
 }
 
@@ -100,6 +124,7 @@ export interface RiskQuestionInput {
   required?: boolean;
   sortOrder?: number;
   active?: boolean;
+  groupId?: string | null;
   options?: { label: string; riskFactor?: number; sortOrder?: number }[];
 }
 
@@ -119,7 +144,7 @@ export const api = {
       get: (id: string) =>
         pub<Motorcycle>(`/public/motorcycles/${id}`),
     },
-    riskQuestions: { list: () => pub<RiskQuestion[]>("/public/risk-questions") },
+    riskQuestions: { list: (params?: URLSearchParams) => pub<RiskQuestion[]>(`/public/risk-questions${params ? `?${params}` : ""}`) },
     quote: {
       simulate: (payload: SimulatePayload) =>
         request<QuoteResult>("/public/quote/simulate", { method: "POST", body: JSON.stringify(payload) }),
@@ -143,11 +168,24 @@ export const api = {
       update: (id: string, data: Partial<QuoteRuleInput>)     => put<QuoteRule>(`/dealer/quote-rules/${id}`, data),
       remove: (id: string)                                    => del(`/dealer/quote-rules/${id}`),
     },
+    quoteProfiles: {
+      list:   ()                                              => get<QuoteProfile[]>("/dealer/quote-profiles"),
+      get:    (id: string)                                    => get<QuoteProfile>(`/dealer/quote-profiles/${id}`),
+      create: (data: QuoteProfileInput)                       => post<QuoteProfile>("/dealer/quote-profiles", data),
+      update: (id: string, data: Partial<QuoteProfileInput>)  => put<QuoteProfile>(`/dealer/quote-profiles/${id}`, data),
+      remove: (id: string)                                    => del(`/dealer/quote-profiles/${id}`),
+    },
     riskQuestions: {
       list:   ()                                                   => get<RiskQuestionAdmin[]>("/dealer/risk-questions"),
       create: (data: RiskQuestionInput)                            => post<RiskQuestionAdmin>("/dealer/risk-questions", data),
       update: (id: string, data: Partial<RiskQuestionInput>)       => put<RiskQuestionAdmin>(`/dealer/risk-questions/${id}`, data),
       remove: (id: string)                                         => del(`/dealer/risk-questions/${id}`),
+    },
+    riskQuestionGroups: {
+      list:        ()                                               => get<RiskQuestionGroup[]>("/dealer/risk-question-groups"),
+      get:         (id: string)                                     => get<RiskQuestionGroup>(`/dealer/risk-question-groups/${id}`),
+      create:      (data: { name: string; description?: string })   => post<RiskQuestionGroup>("/dealer/risk-question-groups", data),
+      addQuestion: (id: string, data: RiskQuestionInput)            => post<RiskQuestionAdmin>(`/dealer/risk-question-groups/${id}/questions`, data),
     },
   },
 };

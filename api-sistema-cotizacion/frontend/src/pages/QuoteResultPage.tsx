@@ -69,7 +69,18 @@ export default function QuoteResultPage() {
 
         <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 px-4">
           <Row label="Precio base"      value={fmt(b.basePrice)} />
-          {b.ruleName && <Row label={`Regla: ${b.ruleName}`} value={`×${b.ruleFactor} + ${fmt(b.ruleCharge)}`} />}
+          {b.ruleName && b.ruleFactor && b.ruleCharge && (
+            <Row label={`Regla: ${b.ruleName}`} value={`×${b.ruleFactor} + ${fmt(b.ruleCharge)}`} />
+          )}
+          {b.profileName && b.profileFactor && b.profileCharge && (
+            <Row label={`Perfil: ${b.profileName}`} value={`×${b.profileFactor} + ${fmt(b.profileCharge)}`} />
+          )}
+          {b.minDownPayment && Number(b.minDownPayment) > 0 && (
+            <Row label="Cuota inicial mín." value={fmt(b.minDownPayment)} />
+          )}
+          {b.maxMonths && (
+            <Row label="Plazo máximo" value={`${b.maxMonths} meses`} />
+          )}
           <Row label="Factor de riesgo" value={`×${b.riskFactor}`} />
           <Row label="Recargo total"    value={fmt(b.surcharge)} />
           <Row label="PRECIO FINAL"     value={fmt(b.finalPrice)} highlight />

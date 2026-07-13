@@ -11,6 +11,8 @@ export interface MotorcycleInput {
   category: string;
   description?: string;
   active?: boolean;
+  riskQuestionGroupId?: string | null;
+  quoteProfileId?: string | null;
   images?: { url: string; altText?: string; isPrimary?: boolean; sortOrder?: number }[];
 }
 
@@ -25,7 +27,11 @@ export interface ListFilters {
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
-const imageInclude = { images: { orderBy: { sortOrder: "asc" as const } } };
+const imageInclude = {
+  images: { orderBy: { sortOrder: "asc" as const } },
+  riskQuestionGroup: { select: { id: true, name: true } },
+  quoteProfile: { select: { id: true, name: true } }
+};
 
 export const motorcycleService = {
   async list(dealershipId: string, filters: ListFilters) {

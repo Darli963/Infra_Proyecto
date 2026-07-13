@@ -22,6 +22,8 @@ const publicMotoSelect = {
   id: true, brand: true, model: true, year: true,
   engineCC: true, price: true, currency: true,
   category: true, description: true,
+  riskQuestionGroupId: true,
+  quoteProfileId: true,
   images: { orderBy: { sortOrder: "asc" as const } },
 };
 
@@ -58,7 +60,28 @@ export const publicService = {
     return moto;
   },
 
-  getRiskQuestions() {
+  async getRiskQuestions(filters: { motorcycleId?: string; groupId?: string } = {}) {
+    if (filters.motorcycleId) {
+      const moto = await prisma.motorcycle.findUnique({ where: { id: filters.motorcycleId } });
+      if (!moto) throw Object.assign(new Error("Motocicleta no encontrada"), { status: 404 });
+      if (!moto.riskQuestionGroupId) {
+        throw Object.assign(new Error("Esta motocicleta no tiene un grupo de preguntas de riesgo asignado"), { status: 400 });
+      }
+      return prisma.riskQuestion.findMany({
+        where: { active: true, groupId: moto.riskQuestionGroupId },
+        orderBy: { sortOrder: "asc" },
+        include: { options: { orderBy: { sortOrder: "asc" } } },
+      });
+    }
+
+    if (filters.groupId) {
+      return prisma.riskQuestion.findMany({
+        where: { active: true, groupId: filters.groupId },
+        orderBy: { sortOrder: "asc" },
+        include: { options: { orderBy: { sortOrder: "asc" } } },
+      });
+    }
+
     return prisma.riskQuestion.findMany({
       where: { active: true },
       orderBy: { sortOrder: "asc" },
@@ -71,23 +94,26 @@ export const publicService = {
 
 export const quoteEngine = {
   async simulate(input: SimulateInput) {
-    // 1. Cargar moto con su concesionaria
+    // 1. Cargar moto con su concesionaria, perfil y grupo de preguntas
     const moto = await prisma.motorcycle.findFirst({
       where: { id: input.motorcycleId, active: true },
-      include: { dealership: true },
+      include: { dealership: true, quoteProfile: true, riskQuestionGroup: true },
     });
     if (!moto) throw Object.assign(new Error("Motocicleta no disponible"), { status: 404 });
     if (!moto.dealership.active) throw Object.assign(new Error("Concesionaria inactiva"), { status: 404 });
 
-    // 2. Obtener regla activa: primero busca específica de la moto, luego global de la concesionaria
-    const rule = await prisma.quoteRule.findFirst({
-      where: {
-        dealershipId: moto.dealershipId,
-        active: true,
-        OR: [{ motorcycleId: moto.id }, { motorcycleId: null }],
-      },
-      orderBy: { motorcycleId: "desc" }, // las específicas (no-null) primero
-    });
+    // Validar asignaciones obligatorias
+    if (!moto.riskQuestionGroupId) {
+      throw Object.assign(new Error("Esta motocicleta no tiene un grupo de preguntas de riesgo asignado"), { status: 400 });
+    }
+    if (!moto.quoteProfileId) {
+      throw Object.assign(new Error("Esta motocicleta no tiene un perfil de cotización asignado"), { status: 400 });
+    }
+
+    const profile = moto.quoteProfile;
+    if (!profile || !profile.active) {
+      throw Object.assign(new Error("El perfil de cotización vinculado no está activo o no existe"), { status: 400 });
+    }
 
     // 3. Resolver factores de riesgo de las respuestas con opción seleccionada
     const optionIds = input.responses.flatMap(r => r.optionId ? [r.optionId] : []);
@@ -99,8 +125,8 @@ export const quoteEngine = {
 
     // 4. Cálculo aritmético en JS con Decimal para evitar errores de punto flotante
     const basePrice   = new Prisma.Decimal(moto.price);
-    const ruleFactor  = rule ? new Prisma.Decimal(rule.factor)      : new Prisma.Decimal(1);
-    const ruleCharge  = rule ? new Prisma.Decimal(rule.fixedCharge) : new Prisma.Decimal(0);
+    const ruleFactor  = new Prisma.Decimal(profile.factor);
+    const ruleCharge  = new Prisma.Decimal(profile.fixedCharge);
 
     // Producto de todos los factores de riesgo (multiplicativo)
     let riskFactor = new Prisma.Decimal(1);
@@ -160,14 +186,16 @@ export const quoteEngine = {
       simulationId: simulation.id,
       currency:     moto.currency,
       breakdown: {
-        basePrice:    basePrice.toFixed(2),
-        ruleName:     rule?.name ?? null,
-        ruleFactor:   ruleFactor.toFixed(4),
-        ruleCharge:   ruleCharge.toFixed(2),
-        riskFactor:   riskFactor.toFixed(4),
-        riskDetails:  riskBreakdown,
-        surcharge:    surcharge.toFixed(2),
-        finalPrice:   finalPrice.toFixed(2),
+        basePrice:      basePrice.toFixed(2),
+        profileName:    profile.name,
+        profileFactor:  ruleFactor.toFixed(4),
+        profileCharge:  ruleCharge.toFixed(2),
+        minDownPayment: new Prisma.Decimal(profile.minDownPayment).toFixed(2),
+        maxMonths:      profile.maxMonths,
+        riskFactor:     riskFactor.toFixed(4),
+        riskDetails:    riskBreakdown,
+        surcharge:      surcharge.toFixed(2),
+        finalPrice:     finalPrice.toFixed(2),
       },
       expiresAt: simulation.expiresAt,
     };

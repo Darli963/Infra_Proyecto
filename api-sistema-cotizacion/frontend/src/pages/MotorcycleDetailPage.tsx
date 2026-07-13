@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useFetch } from "../hooks/useFetch";
 import { api } from "../services/api";
 import { Spinner, ErrorMessage } from "../components/Feedback";
+import { CATEGORY_MAP } from "../components/MotorcycleForm";
 
 export default function MotorcycleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,7 +54,7 @@ export default function MotorcycleDetailPage() {
         <div className="flex flex-col">
           <span className="text-sm font-medium uppercase tracking-wide text-gray-400">{moto.brand}</span>
           <h1 className="mt-1 text-3xl font-bold text-gray-900">{moto.model}</h1>
-          <p className="mt-1 text-gray-500">{moto.year} · {moto.engineCC} cc · {moto.category}</p>
+          <p className="mt-1 text-gray-500">{moto.year} · {moto.engineCC} cc · {CATEGORY_MAP[moto.category] || moto.category}</p>
 
           {moto.description && (
             <p className="mt-4 text-sm leading-relaxed text-gray-600">{moto.description}</p>

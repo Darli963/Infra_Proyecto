@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Motorcycle } from "../services/types";
+import { CATEGORY_MAP } from "./MotorcycleForm";
 
 function primaryImage(m: Motorcycle) {
   return m.images.find((i) => i.isPrimary)?.url ?? m.images[0]?.url ?? null;
@@ -19,7 +20,7 @@ export function MotorcycleCard({ moto }: { moto: Motorcycle }) {
           <div className="flex h-full items-center justify-center text-gray-400 text-sm">Sin imagen</div>
         )}
         <span className="absolute right-2 top-2 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
-          {moto.category}
+          {CATEGORY_MAP[moto.category] || moto.category}
         </span>
       </div>
       <div className="flex flex-1 flex-col p-4">

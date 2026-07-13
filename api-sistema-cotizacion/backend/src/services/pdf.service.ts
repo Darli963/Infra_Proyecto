@@ -2,6 +2,21 @@ import PDFDocument from "pdfkit";
 import { Readable, PassThrough } from "stream";
 import prisma, { Decimal } from "../config/prisma";
 
+const CATEGORY_MAP: Record<string, string> = {
+  lineal: "Lineal",
+  scooter_automatica: "Scooter / Automática",
+  deportiva: "Deportiva",
+  paseo_turismo: "Paseo / Turismo",
+  clasica: "Clásica",
+  todoterreno_cross: "Todoterreno / Cross",
+  carguera_delivery: "Carguera / Delivery",
+  sport: "Deportiva",
+  touring: "Paseo / Turismo",
+  cruiser: "Clásica",
+  "off-road": "Todoterreno / Cross",
+  scooter: "Scooter / Automática"
+};
+
 // ─── carga de datos ───────────────────────────────────────────────────────────
 
 export async function loadSimulationForPdf(simulationId: string) {
@@ -87,7 +102,7 @@ export function buildQuotePdf(sim: SimData): Readable {
     ["Modelo",       moto.model],
     ["Año",          String(moto.year)],
     ["Cilindraje",   `${moto.engineCC} cc`],
-    ["Categoría",    moto.category],
+    ["Categoría",    CATEGORY_MAP[moto.category] || moto.category],
     ["Precio base",  money(sim.basePrice, currency)],
   ];
   for (const [label, value] of motoLines) {

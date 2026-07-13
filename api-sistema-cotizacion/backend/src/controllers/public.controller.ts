@@ -20,9 +20,10 @@ export const publicController = {
     } catch (err) { next(err); }
   },
 
-  async getRiskQuestions(_req: Request, res: Response, next: NextFunction) {
+  async getRiskQuestions(req: Request, res: Response, next: NextFunction) {
     try {
-      res.json({ status: "ok", data: await publicService.getRiskQuestions() });
+      const { motorcycleId, groupId } = req.query as Record<string, string>;
+      res.json({ status: "ok", data: await publicService.getRiskQuestions({ motorcycleId, groupId }) });
     } catch (err) { next(err); }
   },
 
