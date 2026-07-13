@@ -344,6 +344,6 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids ${{ needs.deploy-infra.outputs.monitoring_instance_id }} \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["curl -sf http://localhost:3000/api/health && curl -sf http://localhost:9090/-/healthy && curl -sf http://localhost:3100/ready"]' \
+            --parameters 'commands=["for i in {1..30}; do if curl -sf http://localhost:3000/api/health && curl -sf http://localhost:9090/-/healthy && curl -sf http://localhost:3100/ready; then echo \"Monitoreo OK\"; exit 0; fi; echo \"Esperando inicio...\"; sleep 10; done; exit 1"]' \
             --query "Command.CommandId" --output text)
           aws ssm wait command-executed --command-id $COMMAND_ID --instance-id ${{ needs.deploy-infra.outputs.monitoring_instance_id }}
