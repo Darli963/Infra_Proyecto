@@ -310,7 +310,33 @@ jobs:
           role-session-name: gha-monitor-dev
 
       - name: Esperar a que la instancia de monitoring aparezca en Session Manager
-        run: aws ssm wait instance-online --instance-ids ${{ needs.deploy-infra.outputs.monitoring_instance_id }}
+        run: |
+          set -euo pipefail
+          instance_id="${{ needs.deploy-infra.outputs.monitoring_instance_id }}"
+          
+          if [ -z "${instance_id}" ] || [ "${instance_id}" = "null" ]; then
+            echo "No se pudo resolver el ID de la instancia de monitoreo. Omitiendo..."
+            exit 0
+          fi
+
+          for attempt in $(seq 1 20); do
+            ping_status="$(aws ssm describe-instance-information \
+              --region "${AWS_REGION}" \
+              --filters "Key=InstanceIds,Values=${instance_id}" \
+              --query 'InstanceInformationList[0].PingStatus' \
+              --output text 2>/dev/null || true)"
+
+            if [ "${ping_status}" = "Online" ]; then
+              echo "La instancia de monitoreo ${instance_id} ya esta administrada por SSM."
+              exit 0
+            fi
+
+            echo "Esperando Session Manager para monitoreo ${instance_id} (intento ${attempt}/20)..."
+            sleep 15
+          done
+
+          echo "::error::La instancia de monitoreo ${instance_id} no quedo disponible en SSM a tiempo."
+          exit 1
 
       - name: Validar que Grafana, Prometheus y Loki respondan
         run: |
