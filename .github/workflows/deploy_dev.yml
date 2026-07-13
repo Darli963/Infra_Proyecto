@@ -70,6 +70,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
 
       - name: Terraform init
         working-directory: terraform/environments/dev
@@ -111,9 +112,9 @@ jobs:
           TEST_INSTANCE_ID=$(terraform output -raw test_instance_id)
           
           # Outputs opcionales del modulo de monitoreo
-          MONITORING_INSTANCE_ID=$(terraform output -raw monitoring_instance_id 2>/dev/null || echo "")
-          GRAFANA_PRIVATE_IP=$(terraform output -raw grafana_private_ip 2>/dev/null || echo "")
-          GRAFANA_URL=$(terraform output -raw grafana_url 2>/dev/null || echo "")
+          MONITORING_INSTANCE_ID=$(terraform output -json | jq -r '.monitoring_instance_id.value // empty')
+          GRAFANA_PRIVATE_IP=$(terraform output -json | jq -r '.grafana_private_ip.value // empty')
+          GRAFANA_URL=$(terraform output -json | jq -r '.grafana_url.value // empty')
 
           for var in AURORA_SECRET_NAME S3_BUCKET_NAME CLOUDFRONT_DOMAIN CLOUDFRONT_DISTRIBUTION_ID COGNITO_USER_POOL_ID COGNITO_CLIENT_ID COGNITO_USER_POOL_ENDPOINT TEST_INSTANCE_ID; do
             if [ -z "${!var}" ] || [ "${!var}" = "null" ]; then
