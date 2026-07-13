@@ -125,8 +125,8 @@ EOF
     --query "Reservations[*].Instances[*].PrivateIpAddress" \
     --output text | head -n1)
 
-  if [ -n "$$MONITORING_IP" ]; then
-    echo "Instancia de monitoreo encontrada en IP: $$MONITORING_IP"
+  if [ -n "$MONITORING_IP" ]; then
+    echo "Instancia de monitoreo encontrada en IP: $MONITORING_IP"
     mkdir -p /etc/alloy
     cat <<EOF > /etc/alloy/config.alloy
 local.file_match "app_logs" {
@@ -148,7 +148,7 @@ loki.relabel "app_logs" {
 
 loki.write "monitoring" {
   endpoint {
-    url = "http://$$MONITORING_IP:3100/loki/api/v1/push"
+    url = "http://$MONITORING_IP:3100/loki/api/v1/push"
   }
 }
 EOF
