@@ -24,7 +24,7 @@ model Dealership {
   updatedAt DateTime @updatedAt
 
   motorcycles      Motorcycle[]
-  quoteRules       QuoteRule[]
+  quoteProfiles    QuoteProfile[]
   quoteSimulations QuoteSimulation[]
 
   @@map("dealerships")
@@ -48,10 +48,13 @@ model Motorcycle {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  dealership       Dealership       @relation(fields: [dealershipId], references: [id])
-  images           MotorcycleImage[]
-  quoteRules       QuoteRule[]
-  quoteSimulations QuoteSimulation[]
+  dealership          Dealership         @relation(fields: [dealershipId], references: [id])
+  images              MotorcycleImage[]
+  quoteSimulations    QuoteSimulation[]
+  riskQuestionGroupId String?
+  riskQuestionGroup   RiskQuestionGroup? @relation(fields: [riskQuestionGroupId], references: [id])
+  quoteProfileId      String?
+  quoteProfile        QuoteProfile?      @relation(fields: [quoteProfileId], references: [id])
 
   @@map("motorcycles")
 }
@@ -74,28 +77,27 @@ model MotorcycleImage {
 }
 
 // ---------------------------------------------------------------------------
-// Reglas de cotización
-// Aplican a nivel concesionaria o a nivel moto (la moto tiene precedencia).
+// Perfiles de cotización
 // ---------------------------------------------------------------------------
-model QuoteRule {
-  id           String   @id @default(uuid())
-  dealershipId String
-  motorcycleId String?  // null = regla global de la concesionaria
-  name         String
+model QuoteProfile {
+  id             String   @id @default(uuid())
+  dealershipId   String
+  name           String
+  description    String?
   // Factor multiplicador sobre el precio base (p.ej. 1.05 = +5 %)
-  factor       Decimal  @db.Decimal(6, 4)
+  factor         Decimal  @db.Decimal(6, 4)
   // Cargo fijo adicional (puede ser 0)
-  fixedCharge  Decimal  @default(0) @db.Decimal(12, 2)
-  currency     String   @default("USD")
-  description  String?
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  fixedCharge    Decimal  @default(0) @db.Decimal(12, 2)
+  minDownPayment Decimal  @default(0) @db.Decimal(12, 2)
+  maxMonths      Int      @default(12)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  dealership Dealership  @relation(fields: [dealershipId], references: [id])
-  motorcycle Motorcycle? @relation(fields: [motorcycleId], references: [id])
+  dealership  Dealership   @relation(fields: [dealershipId], references: [id])
+  motorcycles Motorcycle[]
 
-  @@map("quote_rules")
+  @@map("quote_profiles")
 }
 
 // ---------------------------------------------------------------------------
@@ -110,11 +112,30 @@ model RiskQuestion {
   active       Boolean      @default(true)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  groupId      String?
+  group        RiskQuestionGroup? @relation(fields: [groupId], references: [id])
 
   options              RiskQuestionOption[]
   simulationResponses  SimulationResponse[]
 
   @@map("risk_questions")
+}
+
+// ---------------------------------------------------------------------------
+// Grupos de preguntas de riesgo
+// ---------------------------------------------------------------------------
+model RiskQuestionGroup {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions   RiskQuestion[]
+  motorcycles Motorcycle[]
+
+  @@map("risk_question_groups")
 }
 
 enum InputType {

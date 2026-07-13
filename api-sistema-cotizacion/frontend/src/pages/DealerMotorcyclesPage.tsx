@@ -4,9 +4,7 @@ import { api, type MotorcycleInput } from "../services/api";
 import type { Motorcycle } from "../services/types";
 import { Spinner, ErrorMessage } from "../components/Feedback";
 import { Modal, ConfirmModal } from "../components/Modal";
-import { MotorcycleForm } from "../components/MotorcycleForm";
-
-const CATEGORIES = ["", "sport", "touring", "cruiser", "off-road", "scooter"];
+import { MotorcycleForm, CATEGORIES, CATEGORY_MAP } from "../components/MotorcycleForm";
 
 export default function DealerMotorcyclesPage() {
   const [search,   setSearch]   = useState("");
@@ -89,7 +87,7 @@ export default function DealerMotorcyclesPage() {
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Todas las categorías</option>
-          {CATEGORIES.filter(Boolean).map((c) => <option key={c} value={c}>{c}</option>)}
+          {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
         <select
           value={active}
@@ -138,7 +136,7 @@ export default function DealerMotorcyclesPage() {
                       <td className="px-4 py-3 text-gray-700">
                         {m.currency} {Number(m.price).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{m.category}</td>
+                      <td className="px-4 py-3 text-gray-500">{CATEGORY_MAP[m.category] || m.category}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${m.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                           {m.active ? "Activa" : "Inactiva"}

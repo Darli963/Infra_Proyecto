@@ -71,12 +71,12 @@ resource "aws_iam_role_policy_attachment" "cloudwatch_agent" {
 resource "aws_iam_policy" "ec2_describe" {
   name        = "${var.name}-ec2-describe-policy"
   description = "Permite describir instancias EC2 para service discovery"
-  policy      = jsonencode({
+  policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "ec2:DescribeInstances",
           "ec2:DescribeTags"
         ]

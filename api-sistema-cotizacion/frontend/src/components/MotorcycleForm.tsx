@@ -1,9 +1,34 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import type { MotorcycleInput } from "../services/api";
-import type { Motorcycle } from "../services/types";
+import { api } from "../services/api";
+import type { Motorcycle, RiskQuestionGroup, QuoteProfile } from "../services/types";
 import { ErrorMessage } from "./Feedback";
 
-const CATEGORIES = ["sport", "touring", "cruiser", "off-road", "scooter"];
+export const CATEGORY_MAP: Record<string, string> = {
+  lineal: "Lineal",
+  scooter_automatica: "Scooter / Automática",
+  deportiva: "Deportiva",
+  paseo_turismo: "Paseo / Turismo",
+  clasica: "Clásica",
+  todoterreno_cross: "Todoterreno / Cross",
+  carguera_delivery: "Carguera / Delivery",
+  sport: "Deportiva",
+  touring: "Paseo / Turismo",
+  cruiser: "Clásica",
+  "off-road": "Todoterreno / Cross",
+  scooter: "Scooter / Automática"
+};
+
+export const CATEGORIES = [
+  { value: "lineal", label: "Lineal" },
+  { value: "scooter_automatica", label: "Scooter / Automática" },
+  { value: "deportiva", label: "Deportiva" },
+  { value: "paseo_turismo", label: "Paseo / Turismo" },
+  { value: "clasica", label: "Clásica" },
+  { value: "todoterreno_cross", label: "Todoterreno / Cross" },
+  { value: "carguera_delivery", label: "Carguera / Delivery" }
+];
+
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const STORAGE_KEY = "mq_auth";
 
@@ -47,13 +72,47 @@ export function MotorcycleForm({
   const [year,        setYear]        = useState(initial?.year        ?? new Date().getFullYear());
   const [engineCC,    setEngineCC]    = useState(initial?.engineCC    ?? 125);
   const [price,       setPrice]       = useState(initial?.price       ?? "0");
-  const [currency,    setCurrency]    = useState(initial?.currency    ?? "USD");
-  const [category,    setCategory]    = useState(initial?.category    ?? "sport");
+  const currency = initial?.currency ?? "PEN";
+  const [category,    setCategory]    = useState(initial?.category    ?? "lineal");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [active,      setActive]      = useState(initial?.active      ?? true);
   const [images,      setImages]      = useState<ImageRow[]>(toImageRows(initial));
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState<string | null>(null);
+
+  // Estados para opciones dinámicas de grupos y perfiles
+  const [groups,               setGroups]               = useState<RiskQuestionGroup[]>([]);
+  const [profiles,             setProfiles]             = useState<QuoteProfile[]>([]);
+  const [riskQuestionGroupId,  setRiskQuestionGroupId]  = useState(initial?.riskQuestionGroupId ?? "");
+  const [quoteProfileId,       setQuoteProfileId]       = useState(initial?.quoteProfileId ?? "");
+  const [loadingOptions,       setLoadingOptions]       = useState(false);
+
+  useEffect(() => {
+    async function fetchOptions() {
+      setLoadingOptions(true);
+      try {
+        const [gData, pData] = await Promise.all([
+          api.dealer.riskQuestionGroups.list(),
+          api.dealer.quoteProfiles.list(),
+        ]);
+        setGroups(gData);
+        setProfiles(pData);
+
+        // Preseleccionar si no hay un valor inicial
+        if (!initial?.riskQuestionGroupId && gData.length > 0) {
+          setRiskQuestionGroupId(gData[0].id);
+        }
+        if (!initial?.quoteProfileId && pData.length > 0) {
+          setQuoteProfileId(pData[0].id);
+        }
+      } catch (err) {
+        console.error("Error al cargar grupos/perfiles:", err);
+      } finally {
+        setLoadingOptions(false);
+      }
+    }
+    fetchOptions();
+  }, [initial]);
 
   function setImg(idx: number, patch: Partial<ImageRow>) {
     setImages((prev) => prev.map((r, i) => i === idx ? { ...r, ...patch } : r));
@@ -84,6 +143,8 @@ export function MotorcycleForm({
         price: Number(price), currency, category,
         description: description || undefined,
         active,
+        riskQuestionGroupId: riskQuestionGroupId || null,
+        quoteProfileId: quoteProfileId || null,
         images: images.filter((r) => r.url.trim()).map((r, i) => ({
           url: r.url.trim(), altText: r.altText || undefined,
           isPrimary: r.isPrimary, sortOrder: i,
@@ -117,25 +178,59 @@ export function MotorcycleForm({
           <input className={field} type="number" required min={1} value={engineCC} onChange={(e) => setEngineCC(Number(e.target.value))} />
         </div>
         <div>
-          <label className="label">Precio</label>
-          <input className={field} type="number" required min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Moneda</label>
-          <input className={field} value={currency} onChange={(e) => setCurrency(e.target.value)} />
+          <label htmlFor="price" className="label">Precio (PEN)</label>
+          <input id="price" className={field} type="number" required min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
         </div>
         <div>
           <label className="label">Categoría</label>
           <select className={field} value={category} onChange={(e) => setCategory(e.target.value)}>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </div>
-        <div className="flex items-end pb-1">
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-blue-600" />
-            Activa
-          </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="riskQuestionGroupId" className="label">Grupo de preguntas de riesgo</label>
+          <select
+            id="riskQuestionGroupId"
+            className={field}
+            value={riskQuestionGroupId}
+            onChange={(e) => setRiskQuestionGroupId(e.target.value)}
+            required
+            disabled={loadingOptions}
+          >
+            {groups.length === 0 ? (
+              <option value="">No hay opciones creadas — créalas primero en su sección</option>
+            ) : (
+              groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)
+            )}
+          </select>
         </div>
+        <div>
+          <label htmlFor="quoteProfileId" className="label">Perfil de cotización</label>
+          <select
+            id="quoteProfileId"
+            className={field}
+            value={quoteProfileId}
+            onChange={(e) => setQuoteProfileId(e.target.value)}
+            required
+            disabled={loadingOptions}
+          >
+            {profiles.length === 0 ? (
+              <option value="">No hay opciones creadas — créalas primero en su sección</option>
+            ) : (
+              profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)
+            )}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-blue-600" />
+          Activa
+        </label>
       </div>
 
       <div>
