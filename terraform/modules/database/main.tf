@@ -1,7 +1,7 @@
 resource "random_password" "master_password" {
   length           = 24
   special          = true
-  override_special = "!@#$%*-_=+?"
+  override_special = "!#$%*-_=+?"
 }
 
 resource "aws_db_subnet_group" "this" {
@@ -68,7 +68,7 @@ resource "aws_rds_cluster_instance" "this" {
 
 resource "aws_secretsmanager_secret" "aurora" {
   name                    = var.secret_name
-  recovery_window_in_days = 7
+  recovery_window_in_days = 0
 
   tags = merge(
     var.tags,

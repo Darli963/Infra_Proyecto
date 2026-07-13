@@ -40,7 +40,7 @@ resource "aws_elasticache_replication_group" "this" {
 resource "aws_secretsmanager_secret" "redis" {
   count                   = var.enabled && var.secret_name != null ? 1 : 0
   name                    = var.secret_name
-  recovery_window_in_days = 7
+  recovery_window_in_days = 0
 
   tags = merge(
     var.tags,

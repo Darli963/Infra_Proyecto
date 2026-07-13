@@ -65,7 +65,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 resource "aws_secretsmanager_secret" "app_config" {
   count                   = var.app_config_secret_name != null ? 1 : 0
   name                    = var.app_config_secret_name
-  recovery_window_in_days = 7
+  recovery_window_in_days = 0
 
   tags = merge(
     var.tags,

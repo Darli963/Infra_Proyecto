@@ -439,7 +439,7 @@ resource "aws_cloudfront_distribution" "this" {
     target_origin_id = local.frontend_origin_enabled ? "${var.name}-frontend-origin" : "${var.name}-origin"
 
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
+    origin_request_policy_id = local.frontend_origin_enabled ? null : data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
     viewer_protocol_policy   = "redirect-to-https"
     compress                 = true
 
