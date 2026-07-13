@@ -105,6 +105,27 @@ resource "aws_security_group_rule" "allow_prometheus_to_node_exporter" {
   security_group_id        = data.aws_security_group.app_ec2.id
 }
 
+# --- Reglas en el SG de la app para permitir envios a Loki y Alloy ---
+resource "aws_security_group_rule" "allow_app_to_loki" {
+  type                     = "egress"
+  description              = "Permitir que Alloy de app envie logs a Loki de monitoreo"
+  from_port                = 3100
+  to_port                  = 3100
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.monitoring.id
+  security_group_id        = data.aws_security_group.app_ec2.id
+}
+
+resource "aws_security_group_rule" "allow_app_to_alloy" {
+  type                     = "egress"
+  description              = "Permitir que Alloy de app se comunique con Alloy de monitoreo"
+  from_port                = 12345
+  to_port                  = 12345
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.monitoring.id
+  security_group_id        = data.aws_security_group.app_ec2.id
+}
+
 # --- IAM Role e Instance Profile para Monitoreo ---
 resource "aws_iam_role" "monitoring" {
   name = "${var.environment}-monitoring-role"
@@ -172,7 +193,8 @@ resource "aws_iam_policy" "monitoring" {
         Effect = "Allow"
         Action = [
           "ec2:DescribeInstances",
-          "ec2:DescribeTags"
+          "ec2:DescribeTags",
+          "ec2:DescribeRegions"
         ]
         Resource = "*"
       }
