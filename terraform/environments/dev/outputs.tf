@@ -248,3 +248,8 @@ output "grafana_url" {
   value       = one(module.monitoring[*].grafana_url)
 }
 
+output "grafana_secret_name" {
+  description = "Nombre del secreto en Secrets Manager con la contraseña de admin de Grafana"
+  value       = one(module.monitoring[*].grafana_secret_name)
+}
+

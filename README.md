@@ -116,6 +116,10 @@ Requiere variables en GitHub Actions environment `dev`:
 - `TF_LOCK_TABLE`
 - `AWS_REGION` (opcional; default `us-east-1`)
 
+## Acceso a Grafana
+
+Puedes conectarte de forma segura a Grafana, Prometheus o Loki usando el script helper `./scripts/grafana.sh` (ej: `./scripts/grafana.sh` o `./scripts/grafana.sh prometheus`). El script creará un túnel SSM local en el puerto correspondiente y te mostrará la contraseña de administrador obtenida de AWS Secrets Manager.
+
 ## Troubleshooting
 
 - `terraform init` falla por backend: valida `TF_STATE_BUCKET` y `TF_LOCK_TABLE`.

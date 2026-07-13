@@ -13,3 +13,8 @@ output "monitoring_instance_id" {
   value       = aws_instance.this.id
 }
 
+output "grafana_secret_name" {
+  description = "Nombre del secreto en Secrets Manager con la contraseña de admin de Grafana"
+  value       = aws_secretsmanager_secret.grafana.name
+}
+
