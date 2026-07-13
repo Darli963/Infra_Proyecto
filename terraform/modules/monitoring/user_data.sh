@@ -7,12 +7,14 @@ dnf update -y
 # Instalar docker
 dnf install -y docker jq
 
-# Instalar el plugin de docker-compose v2
-dnf install -y docker-compose-plugin
-
 # Iniciar y habilitar el servicio de docker
 systemctl start docker
 systemctl enable docker
+
+# Instalar docker-compose v2 como plugin
+mkdir -p /usr/libexec/docker/cli-plugins/
+curl -SL "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64" -o /usr/libexec/docker/cli-plugins/docker-compose
+chmod +x /usr/libexec/docker/cli-plugins/docker-compose
 
 # Directorio de trabajo
 mkdir -p /opt/monitoring
