@@ -140,11 +140,11 @@ export const api = {
   public: {
     motorcycles: {
       list: (params?: URLSearchParams) =>
-        pub<PaginatedResponse<Motorcycle>>(`/public/motorcycles${params ? `?${params}` : ""}`),
+        pub<PaginatedResponse<Motorcycle>>("/public/motorcycles" + (params ? "?" + params : "")),
       get: (id: string) =>
         pub<Motorcycle>(`/public/motorcycles/${id}`),
     },
-    riskQuestions: { list: (params?: URLSearchParams) => pub<RiskQuestion[]>(`/public/risk-questions${params ? `?${params}` : ""}`) },
+    riskQuestions: { list: (params?: URLSearchParams) => pub<RiskQuestion[]>("/public/risk-questions" + (params ? "?" + params : "")) },
     quote: {
       simulate: (payload: SimulatePayload) =>
         request<QuoteResult>("/public/quote/simulate", { method: "POST", body: JSON.stringify(payload) }),
@@ -155,7 +155,7 @@ export const api = {
   dealer: {
     motorcycles: {
       list: (params?: URLSearchParams) =>
-        get<PaginatedResponse<Motorcycle>>(`/dealer/motorcycles${params ? `?${params}` : ""}`),
+        get<PaginatedResponse<Motorcycle>>("/dealer/motorcycles" + (params ? "?" + params : "")),
       get:    (id: string)                                 => get<Motorcycle>(`/dealer/motorcycles/${id}`),
       create: (data: MotorcycleInput)                      => post<Motorcycle>("/dealer/motorcycles", data),
       update: (id: string, data: Partial<MotorcycleInput>) => put<Motorcycle>(`/dealer/motorcycles/${id}`, data),

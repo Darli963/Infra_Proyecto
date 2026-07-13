@@ -178,8 +178,8 @@ export function MotorcycleForm({
           <input className={field} type="number" required min={1} value={engineCC} onChange={(e) => setEngineCC(Number(e.target.value))} />
         </div>
         <div>
-          <label className="label">Precio (PEN)</label>
-          <input className={field} type="number" required min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
+          <label htmlFor="price" className="label">Precio (PEN)</label>
+          <input id="price" className={field} type="number" required min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
         </div>
         <div>
           <label className="label">Categoría</label>
@@ -191,8 +191,9 @@ export function MotorcycleForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Grupo de preguntas de riesgo</label>
+          <label htmlFor="riskQuestionGroupId" className="label">Grupo de preguntas de riesgo</label>
           <select
+            id="riskQuestionGroupId"
             className={field}
             value={riskQuestionGroupId}
             onChange={(e) => setRiskQuestionGroupId(e.target.value)}
@@ -207,8 +208,9 @@ export function MotorcycleForm({
           </select>
         </div>
         <div>
-          <label className="label">Perfil de cotización</label>
+          <label htmlFor="quoteProfileId" className="label">Perfil de cotización</label>
           <select
+            id="quoteProfileId"
             className={field}
             value={quoteProfileId}
             onChange={(e) => setQuoteProfileId(e.target.value)}

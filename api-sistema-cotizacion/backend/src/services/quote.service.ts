@@ -111,7 +111,7 @@ export const quoteEngine = {
     }
 
     const profile = moto.quoteProfile;
-    if (!profile || !profile.active) {
+    if (!profile?.active) {
       throw Object.assign(new Error("El perfil de cotización vinculado no está activo o no existe"), { status: 400 });
     }
 
