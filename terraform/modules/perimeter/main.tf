@@ -496,7 +496,8 @@ data "aws_iam_policy_document" "frontend_bucket_read" {
 
     actions = ["s3:GetObject"]
     resources = [
-      "${var.frontend_bucket_arn}/frontend/*"
+      "${var.frontend_bucket_arn}/frontend/*",
+      "${var.frontend_bucket_arn}/motorcycle-images/*"
     ]
 
     condition {
