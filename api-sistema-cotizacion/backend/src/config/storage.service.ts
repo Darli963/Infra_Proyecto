@@ -16,9 +16,11 @@ export async function uploadImage(
   const ext = mimetype.split("/")[1] ?? "jpg";
   const key = `${folder}/${randomUUID()}.${ext}`;
 
+  const prefix = config.aws.cloudfrontUrl ? "frontend/" : "";
+
   await s3.send(new PutObjectCommand({
     Bucket:      config.aws.s3Bucket,
-    Key:         key,
+    Key:         `${prefix}${key}`,
     Body:        buffer,
     ContentType: mimetype,
   }));
