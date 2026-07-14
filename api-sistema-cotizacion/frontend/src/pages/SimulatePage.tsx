@@ -61,6 +61,7 @@ export default function SimulatePage() {
   const navigate = useNavigate();
 
   const { data: questions, loading, error } = useFetch(() => api.public.riskQuestions.list(), []);
+  const { data: moto, loading: loadingMoto, error: errorMoto } = useFetch(() => api.public.motorcycles.get(motorcycleId!), [motorcycleId]);
 
   const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
@@ -101,13 +102,29 @@ export default function SimulatePage() {
     }
   }
 
-  if (loading) return <Spinner />;
-  if (error)   return <ErrorMessage message={error} />;
+  if (loading || loadingMoto) return <Spinner />;
+  if (error || errorMoto)   return <ErrorMessage message={error ?? errorMoto ?? ""} />;
 
   return (
     <div className="mx-auto max-w-2xl">
       <Link to={`/motorcycles/${motorcycleId}`} className="mb-4 inline-block text-sm text-blue-600 hover:underline">← Volver al detalle</Link>
       <h1 className="mb-6 text-2xl font-bold text-gray-900">Simulación de cotización</h1>
+
+      {moto && (
+        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50/50 p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{moto.brand}</p>
+          <h2 className="text-lg font-bold text-gray-900">{moto.model} <span className="font-normal text-gray-500">({moto.year})</span></h2>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-gray-600">
+            <span>Precio base: {moto.currency} {Number(moto.price).toLocaleString()}</span>
+            {moto.dealership && (
+              <>
+                <span className="text-gray-300">•</span>
+                <span className="font-semibold text-blue-600">📍 Concesionario: {moto.dealership.name}</span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Datos del solicitante */}

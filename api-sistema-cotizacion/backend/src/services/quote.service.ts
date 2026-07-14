@@ -25,10 +25,20 @@ const publicMotoSelect = {
   riskQuestionGroupId: true,
   quoteProfileId: true,
   images: { orderBy: { sortOrder: "asc" as const } },
+  dealership: { select: { id: true, name: true, slug: true } },
 };
 
 export const publicService = {
-  listMotorcycles(filters: { search?: string; category?: string; page?: number; limit?: number }) {
+  listMotorcycles(filters: {
+    search?: string;
+    category?: string;
+    page?: number;
+    limit?: number;
+    priceMin?: number;
+    priceMax?: number;
+    dealershipId?: string;
+    sort?: string;
+  }) {
     const page  = Math.max(1, filters.page  ?? 1);
     const limit = Math.min(100, filters.limit ?? 20);
     const skip  = (page - 1) * limit;
@@ -37,18 +47,53 @@ export const publicService = {
       active: true,
       dealership: { active: true },
       ...(filters.category && { category: filters.category }),
+      ...(filters.dealershipId && { dealershipId: filters.dealershipId }),
       ...(filters.search && {
         OR: [
           { brand: { contains: filters.search, mode: "insensitive" } },
           { model: { contains: filters.search, mode: "insensitive" } },
         ],
       }),
+      ...((filters.priceMin !== undefined || filters.priceMax !== undefined) && {
+        price: {
+          ...(filters.priceMin !== undefined && { gte: new Prisma.Decimal(filters.priceMin) }),
+          ...(filters.priceMax !== undefined && { lte: new Prisma.Decimal(filters.priceMax) }),
+        },
+      }),
     };
+
+    let orderBy: Prisma.MotorcycleOrderByWithRelationInput = { createdAt: "desc" };
+    if (filters.sort === "price_asc") {
+      orderBy = { price: "asc" };
+    } else if (filters.sort === "price_desc") {
+      orderBy = { price: "desc" };
+    }
 
     return Promise.all([
       prisma.motorcycle.count({ where }),
-      prisma.motorcycle.findMany({ where, skip, take: limit, orderBy: { createdAt: "desc" }, select: publicMotoSelect }),
+      prisma.motorcycle.findMany({ where, skip, take: limit, orderBy, select: publicMotoSelect }),
     ]).then(([total, items]) => ({ items, total, page, limit, pages: Math.ceil(total / limit) }));
+  },
+
+  async listDealerships() {
+    return prisma.dealership.findMany({
+      where: {
+        active: true,
+        motorcycles: {
+          some: {
+            active: true,
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
   },
 
   async getMotorcycle(id: string) {
@@ -185,6 +230,15 @@ export const quoteEngine = {
     return {
       simulationId: simulation.id,
       currency:     moto.currency,
+      dealership: {
+        id:   moto.dealership.id,
+        name: moto.dealership.name,
+        slug: moto.dealership.slug,
+      },
+      motorcycle: {
+        brand: moto.brand,
+        model: moto.model,
+      },
       breakdown: {
         basePrice:      basePrice.toFixed(2),
         profileName:    profile.name,

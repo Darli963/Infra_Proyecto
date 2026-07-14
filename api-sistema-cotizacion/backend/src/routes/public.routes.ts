@@ -7,6 +7,7 @@ const router = Router();
 
 router.get("/motorcycles",      publicController.listMotorcycles);
 router.get("/motorcycles/:id",  publicController.getMotorcycle);
+router.get("/dealerships",      publicController.listDealerships);
 router.get("/risk-questions",   publicController.getRiskQuestions);
 
 router.post(

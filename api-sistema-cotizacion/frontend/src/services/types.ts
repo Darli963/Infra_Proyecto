@@ -20,6 +20,11 @@ export interface Motorcycle {
   riskQuestionGroupId: string | null;
   quoteProfileId: string | null;
   images: MotorcycleImage[];
+  dealership?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
 }
 
 export interface QuoteProfile {
@@ -80,6 +85,15 @@ export interface SimulatePayload {
 export interface QuoteResult {
   simulationId: string;
   currency: string;
+  dealership?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  motorcycle?: {
+    brand: string;
+    model: string;
+  };
   breakdown: {
     basePrice: string;
     ruleName?: string | null;

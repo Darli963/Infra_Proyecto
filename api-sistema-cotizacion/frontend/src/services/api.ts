@@ -144,6 +144,10 @@ export const api = {
       get: (id: string) =>
         pub<Motorcycle>(`/public/motorcycles/${id}`),
     },
+    dealerships: {
+      list: () =>
+        pub<{ id: string; name: string; slug: string }[]>("/public/dealerships"),
+    },
     riskQuestions: { list: (params?: URLSearchParams) => pub<RiskQuestion[]>("/public/risk-questions" + (params ? "?" + params : "")) },
     quote: {
       simulate: (payload: SimulatePayload) =>

@@ -4,12 +4,24 @@ import { publicService, quoteEngine, SimulateInput } from "../services/quote.ser
 export const publicController = {
   async listMotorcycles(req: Request, res: Response, next: NextFunction) {
     try {
-      const { search, category, page, limit } = req.query as Record<string, string>;
+      const { search, category, page, limit, priceMin, priceMax, dealershipId, sort } = req.query as Record<string, string>;
       const result = await publicService.listMotorcycles({
-        search, category,
+        search,
+        category,
         page:  page  ? Number(page)  : undefined,
         limit: limit ? Number(limit) : undefined,
+        priceMin: priceMin ? Number(priceMin) : undefined,
+        priceMax: priceMax ? Number(priceMax) : undefined,
+        dealershipId,
+        sort,
       });
+      res.json({ status: "ok", data: result });
+    } catch (err) { next(err); }
+  },
+
+  async listDealerships(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await publicService.listDealerships();
       res.json({ status: "ok", data: result });
     } catch (err) { next(err); }
   },

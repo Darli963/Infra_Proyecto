@@ -29,7 +29,7 @@ export default function QuoteResultPage() {
     );
   }
 
-  const { breakdown: b, currency, simulationId, expiresAt } = state;
+  const { dealership, motorcycle, breakdown: b, currency, simulationId, expiresAt } = state;
   const fmt = (v: string) =>
     `${currency} ${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
   const expDate = new Date(expiresAt).toLocaleDateString(undefined, {
@@ -65,6 +65,15 @@ export default function QuoteResultPage() {
             <h1 className="text-xl font-bold text-gray-900">Cotización generada</h1>
             <p className="text-xs text-gray-400">ID: {simulationId}</p>
           </div>
+        </div>
+
+        <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 px-4 mb-4 bg-gray-50/30">
+          {motorcycle && (
+            <Row label="Motocicleta" value={`${motorcycle.brand} ${motorcycle.model}`} />
+          )}
+          {dealership && (
+            <Row label="Concesionario" value={dealership.name} />
+          )}
         </div>
 
         <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 px-4">
