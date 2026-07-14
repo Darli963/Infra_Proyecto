@@ -66,10 +66,11 @@ resource "aws_iam_role_policy" "instance_runtime" {
           Resource = [var.artifact_bucket_arn]
         },
         {
-          Sid    = "ReadArtifactObjects"
+          Sid    = "ReadWriteArtifactObjects"
           Effect = "Allow"
           Action = [
-            "s3:GetObject"
+            "s3:GetObject",
+            "s3:PutObject"
           ]
           Resource = ["${var.artifact_bucket_arn}/*"]
         }
