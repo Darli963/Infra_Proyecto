@@ -35,7 +35,7 @@ const STORAGE_KEY = "mq_auth";
 interface ImageRow { url: string; altText: string; isPrimary: boolean; uploading?: boolean }
 
 function toImageRows(moto?: Motorcycle): ImageRow[] {
-  if (!moto?.images.length) return [{ url: "", altText: "", isPrimary: true }];
+  if (!moto?.images?.length) return [{ url: "", altText: "", isPrimary: true }];
   return moto.images.map((i) => ({ url: i.url, altText: i.altText ?? "", isPrimary: i.isPrimary }));
 }
 
