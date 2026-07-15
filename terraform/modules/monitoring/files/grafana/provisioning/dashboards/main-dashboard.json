@@ -310,7 +310,7 @@
             "type": "loki",
             "uid": "Loki"
           },
-          "expr": "sum by(action) (count_over_time({job=\"app_logs\"} | json | action!=\"\" [$__interval]))",
+          "expr": "sum by(action) (count_over_time({job=\"app_logs\"} | json | action!=\"\" [$$__interval]))",
           "refId": "A"
         }
       ],
@@ -348,7 +348,7 @@
             "type": "loki",
             "uid": "Loki"
           },
-          "expr": "sum by(level) (count_over_time({job=\"app_logs\"} | json | level!=\"\" [$__interval]))",
+          "expr": "sum by(level) (count_over_time({job=\"app_logs\"} | json | level!=\"\" [$$__interval]))",
           "refId": "A"
         }
       ],
@@ -386,7 +386,7 @@
             "type": "loki",
             "uid": "Loki"
           },
-          "expr": "sum by(endpoint) (count_over_time({job=\"app_logs\"} | json | endpoint!=\"\" [$__interval]))",
+          "expr": "sum by(endpoint) (count_over_time({job=\"app_logs\"} | json | endpoint!=\"\" [$$__interval]))",
           "refId": "A"
         }
       ],
@@ -424,7 +424,7 @@
             "type": "loki",
             "uid": "Loki"
           },
-          "expr": "sum by(user) (count_over_time({job=\"app_logs\"} | json | action=\"User login\" [$__interval]))",
+          "expr": "sum by(user) (count_over_time({job=\"app_logs\"} | json | action=\"User login\" [$$__interval]))",
           "refId": "A"
         }
       ],
@@ -462,7 +462,7 @@
             "type": "loki",
             "uid": "Loki"
           },
-          "expr": "sum by(method) (count_over_time({job=\"app_logs\"} | json | method!=\"\" [$__interval]))",
+          "expr": "sum by(method) (count_over_time({job=\"app_logs\"} | json | method!=\"\" [$$__interval]))",
           "refId": "A"
         }
       ],
@@ -500,7 +500,7 @@
             "type": "loki",
             "uid": "Loki"
           },
-          "expr": "sum by(ip) (count_over_time({job=\"app_logs\"} | json | ip!=\"\" [$__interval]))",
+          "expr": "sum by(ip) (count_over_time({job=\"app_logs\"} | json | ip!=\"\" [$$__interval]))",
           "refId": "A"
         }
       ],
@@ -538,7 +538,7 @@
             "type": "loki",
             "uid": "Loki"
           },
-          "expr": "sum by(status) (count_over_time({job=\"app_logs\"} | json | status!=\"\" [$__interval]))",
+          "expr": "sum by(status) (count_over_time({job=\"app_logs\"} | json | status!=\"\" [$$__interval]))",
           "refId": "A"
         }
       ],
