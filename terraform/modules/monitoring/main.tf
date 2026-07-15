@@ -219,12 +219,12 @@ resource "aws_iam_instance_profile" "monitoring" {
 
 # --- Instancia EC2 de Monitoreo ---
 resource "aws_instance" "this" {
-  ami                  = data.aws_ssm_parameter.al2023_ami.value
-  instance_type        = "t3.small"
-  subnet_id            = var.private_subnet_ids[0]
-  key_name             = var.key_pair_name
+  ami                    = data.aws_ssm_parameter.al2023_ami.value
+  instance_type          = "t3.small"
+  subnet_id              = var.private_subnet_ids[0]
+  key_name               = var.key_pair_name
   vpc_security_group_ids = [aws_security_group.monitoring.id]
-  iam_instance_profile = aws_iam_instance_profile.monitoring.name
+  iam_instance_profile   = aws_iam_instance_profile.monitoring.name
 
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
     grafana_secret_name    = var.grafana_secret_name
@@ -243,8 +243,8 @@ resource "aws_instance" "this" {
       aws_region = data.aws_region.current.name
     })
     grafana_dashboards = file("${path.module}/files/grafana/provisioning/dashboards/dashboards.yml")
-    alb_arn_suffix      = var.alb_arn_suffix
-    aurora_cluster_id   = var.aurora_cluster_id
+    alb_arn_suffix     = var.alb_arn_suffix
+    aurora_cluster_id  = var.aurora_cluster_id
   }))
 
   tags = {

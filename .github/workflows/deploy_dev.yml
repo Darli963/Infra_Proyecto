@@ -254,7 +254,10 @@ jobs:
         env:
           ANSIBLE_AWS_SSM_BUCKET_NAME: ${{ env.S3_BUCKET_NAME }}
           ANSIBLE_HOST_KEY_CHECKING: "False"
-          ANSIBLE_STDOUT_CALLBACK: yaml
+          # community.general.yaml fue eliminado en community.general 12.0.0.
+          # Usar el callback nativo de ansible-core con result_format=yaml.
+          ANSIBLE_STDOUT_CALLBACK: default
+          ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
         run: |
           set -euo pipefail
           ansible-playbook \
@@ -266,7 +269,8 @@ jobs:
         env:
           ANSIBLE_AWS_SSM_BUCKET_NAME: ${{ env.S3_BUCKET_NAME }}
           ANSIBLE_HOST_KEY_CHECKING: "False"
-          ANSIBLE_STDOUT_CALLBACK: yaml
+          ANSIBLE_STDOUT_CALLBACK: default
+          ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
         run: |
           set -euo pipefail
           ansible-playbook \
@@ -283,7 +287,8 @@ jobs:
 
       - name: Desplegar frontend en dev por Ansible
         env:
-          ANSIBLE_STDOUT_CALLBACK: yaml
+          ANSIBLE_STDOUT_CALLBACK: default
+          ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
         run: |
           set -euo pipefail
           ansible-playbook \
