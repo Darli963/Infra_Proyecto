@@ -72,6 +72,7 @@ export interface RiskQuestion {
   required: boolean;
   sortOrder: number;
   groupId: string | null;
+  active: boolean;
   options: RiskQuestionOption[];
 }
 
