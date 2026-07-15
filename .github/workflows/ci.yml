@@ -1,6 +1,10 @@
 name: CI
 
 on:
+  push:
+    branches:
+      - develop
+      - main
   pull_request:
     branches:
       - develop
@@ -91,3 +95,55 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v8.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  checkov:
+    name: Checkov
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform
+          output_format: cli,junitxml
+          output_file_path: console,results.xml
+          # CKV_AWS_145: S3 KMS encryption (using SSE-S3 is standard and free, KMS keys incur cost).
+          # CKV_AWS_158: CloudWatch Log Group KMS encryption (avoiding customer-managed KMS key billing).
+          # CKV_AWS_21: RDS Multi-AZ (disabled to save costs in non-production environments).
+          # CKV_AWS_118: AppSync logging (we do not use AppSync in this project).
+          args: --hard-fail-on HIGH --skip-check CKV_AWS_145,CKV_AWS_158,CKV_AWS_21,CKV_AWS_118
+
+      - name: Upload Checkov results as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkov-results
+          path: results.xml
+
+  backend-tests:
+    name: Backend Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: api-sistema-cotizacion/backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: api-sistema-cotizacion/backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: api-sistema-cotizacion/backend
+        run: npx prisma generate
+
+      - name: Run unit tests
+        working-directory: api-sistema-cotizacion/backend
+        run: npm run test
