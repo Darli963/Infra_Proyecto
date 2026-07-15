@@ -8,14 +8,28 @@
     - inventory/group_vars/deploy_dev.yml
 
   vars:
-    # Ruta absoluta al código fuente del backend — resuelta desde el playbook
+    # Ruta absoluta al código fuente del backend — resuelta desde el playbook.
     # ansible/playbooks/ → subir 2 niveles → raíz del repo → api-sistema-cotizacion/backend
     backend_source_dir: "{{ playbook_dir }}/../../api-sistema-cotizacion/backend"
-    # Valor por defecto vacío si no se pasa como -e ni está en group_vars
+    # Opcional — valor vacío por defecto si no se pasa como -e ni está en group_vars
     backend_cognito_user_pool_endpoint: "{{ backend_cognito_user_pool_endpoint | default('') }}"
 
   pre_tasks:
-    - name: Validate required variables
+    # FIX #4: Verificar que ANSIBLE_AWS_SSM_BUCKET_NAME esté definido antes de conectar
+    # via SSM — si no está, la conexión falla con un error críptico.
+    - name: Verify ANSIBLE_AWS_SSM_BUCKET_NAME is set
+      ansible.builtin.assert:
+        that:
+          - lookup('env', 'ANSIBLE_AWS_SSM_BUCKET_NAME') | length > 0
+        fail_msg: >
+          La variable de entorno ANSIBLE_AWS_SSM_BUCKET_NAME no está definida.
+          Exportarla antes de correr el playbook:
+            export ANSIBLE_AWS_SSM_BUCKET_NAME=$(terraform output -raw storage_bucket_name)
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Validate required backend variables
       ansible.builtin.assert:
         that:
           - backend_aurora_secret_name is defined
@@ -31,20 +45,42 @@
         fail_msg: >
           Required variables are not defined. Pass them via -e or set in group_vars.
           backend_cognito_user_pool_endpoint is optional (defaults to empty string).
+      delegate_to: localhost
+      become: false
+      run_once: true
 
+    # FIX #3: pre_tasks con delegate_to:localhost NUNCA deben usar become:true
+    # porque en el runner de Ubuntu no hay sudo para el usuario de Ansible.
     - name: Check if backend source directory exists
       ansible.builtin.stat:
-        path: "{{ playbook_dir }}/../../api-sistema-cotizacion/backend"
+        path: "{{ backend_source_dir }}"
       register: backend_source
       delegate_to: localhost
-      vars:
-        ansible_connection: local
       become: false
 
     - name: Fail if backend source directory does not exist
       ansible.builtin.fail:
-        msg: "Backend source directory not found at {{ playbook_dir }}/../../api-sistema-cotizacion/backend"
+        msg: "Backend source directory not found at {{ backend_source_dir }}"
       when: not backend_source.stat.exists
+      delegate_to: localhost
+      become: false
+
+    - name: Check that dist/ directory was built
+      ansible.builtin.stat:
+        path: "{{ backend_source_dir }}/dist"
+      register: dist_check
+      delegate_to: localhost
+      become: false
+
+    - name: Fail if dist/ was not built
+      ansible.builtin.fail:
+        msg: >
+          dist/ no existe en {{ backend_source_dir }}/dist.
+          Asegúrate de que el paso 'Build backend' (npm run build) se ejecutó antes
+          de este playbook y que el working-directory es correcto.
+      when: not dist_check.stat.exists or not dist_check.stat.isdir
+      delegate_to: localhost
+      become: false
 
   roles:
     - role: base

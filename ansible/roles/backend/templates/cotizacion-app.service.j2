@@ -6,22 +6,24 @@ After=network.target
 Type=simple
 User=ec2-user
 Group=ec2-user
-WorkingDirectory=/opt/phase4-app/current
-EnvironmentFile=/opt/phase4-app/current/.env
-ExecStart=/usr/bin/node start.js
+# WorkingDirectory usa la ruta real del release, no el symlink,
+# para que Node encuentre dist/server.js con require("./dist/server.js")
+WorkingDirectory={{ backend_release_path }}
+EnvironmentFile={{ backend_release_path }}/.env
+ExecStart=/usr/bin/node {{ backend_release_path }}/start.js
 Restart=always
 RestartSec=10
 
-# Logging
+# Logging a journal — accesible con: journalctl -u cotizacion-app -f
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=cotizacion-app
 
-# Temporarily relaxed security
+# Seguridad mínima
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ReadWritePaths=/opt/phase4-app
+ReadWritePaths={{ backend_release_path }} /opt/phase4-app /var/log
 
 [Install]
 WantedBy=multi-user.target

@@ -10,17 +10,25 @@ hostnames:
   - instance-id
 
 compose:
-  ansible_host: instance-id
-  ansible_connection: aws_ssm
-  ansible_aws_ssm_region: 'us-east-1'
-  ansible_aws_ssm_bucket_name: lookup('env', 'ANSIBLE_AWS_SSM_BUCKET_NAME')
-  ansible_aws_ssm_target: instance-id
+  ansible_host: instance_id
+  ansible_connection: "'aws_ssm'"
+  # FIX #5: el lookup() dentro de un valor YAML sin comillas adicionales puede
+  # ser interpretado como texto literal. Se usa la forma explícita con Jinja2.
+  ansible_aws_ssm_region: "'us-east-1'"
+  ansible_aws_ssm_bucket_name: "lookup('env', 'ANSIBLE_AWS_SSM_BUCKET_NAME')"
+  ansible_aws_ssm_target: instance_id
 
 keyed_groups:
   - key: tags.Environment
     prefix: env
 
 groups:
-  phase4_test: tags.Phase is defined and tags.Phase == 'phase4'
-  deploy_dev: tags.Environment is defined and tags.Environment == 'dev' and tags.Phase is defined and tags.Phase == 'phase4'
-  deploy_prod: tags.Environment is defined and tags.Environment == 'prod' and ((tags.Role is defined and tags.Role == 'app-server') or (tags.Phase is defined and tags.Phase == 'phase4'))
+  phase4_test: >-
+    tags.Phase is defined and tags.Phase == 'phase4'
+  deploy_dev: >-
+    tags.Environment is defined and tags.Environment == 'dev' and
+    tags.Phase is defined and tags.Phase == 'phase4'
+  deploy_prod: >-
+    tags.Environment is defined and tags.Environment == 'prod' and
+    ((tags.Role is defined and tags.Role == 'app-server') or
+     (tags.Phase is defined and tags.Phase == 'phase4'))

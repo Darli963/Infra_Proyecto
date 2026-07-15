@@ -72,9 +72,18 @@
 
 # ---------------------------------------------------------------------------
 # 4. Copiar archivos de la aplicación
-#    Permisos 0644 para archivos, 0755 para directorios (Node necesita leerlos)
+#
+#    El módulo `copy` de Ansible falla con "Module result deserialization failed"
+#    al copiar directorios grandes vía SSM porque la respuesta JSON excede el
+#    buffer del canal. Solución: comprimir en el controlador → copiar un
+#    único tarball → descomprimir en el target.
+#
+#    Se usa `tar` directo (más predecible que community.general.archive en cuanto
+#    a la estructura interna del tar y sin dependencia de versión de colección).
 # ---------------------------------------------------------------------------
-- name: Copy backend application files
+
+# 4a. Archivos individuales (pequeños, sin problema de buffer)
+- name: Copy backend individual files
   ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "{{ backend_release_path }}/{{ item.dest }}"
@@ -82,14 +91,82 @@
     group: ec2-user
     mode: '0644'
   loop:
-    - { src: "{{ backend_source_dir }}/dist/", dest: "dist/" }
-    - { src: "{{ backend_source_dir }}/start.js", dest: "start.js" }
-    - { src: "{{ backend_source_dir }}/package.json", dest: "package.json" }
+    - { src: "{{ backend_source_dir }}/start.js",          dest: "start.js" }
+    - { src: "{{ backend_source_dir }}/package.json",      dest: "package.json" }
     - { src: "{{ backend_source_dir }}/package-lock.json", dest: "package-lock.json" }
-    - { src: "{{ backend_source_dir }}/prisma/", dest: "prisma/" }
 
-# Restaurar permisos de directorio (copy los pone 0755 por defecto, pero lo hacemos explícito)
-- name: Ensure dist directory is executable/readable
+# 4b. Comprimir dist/ y prisma/ en tarballs en el controlador.
+#     tar -C <parent> -czf <out> <dirname> → el tar contiene dist/... y prisma/...
+#     sin ruta absoluta, listo para extraer en el release path.
+- name: Create dist tarball on controller
+  ansible.builtin.command:
+    cmd: tar -C "{{ backend_source_dir }}" -czf /tmp/backend-dist.tar.gz dist
+  delegate_to: localhost
+  become: false
+  changed_when: true
+
+- name: Create prisma tarball on controller
+  ansible.builtin.command:
+    cmd: tar -C "{{ backend_source_dir }}" -czf /tmp/backend-prisma.tar.gz prisma
+  delegate_to: localhost
+  become: false
+  changed_when: true
+
+# 4c. Copiar los tarballs al target (un único archivo binario, sin problema de buffer SSM)
+- name: Upload dist tarball to target
+  ansible.builtin.copy:
+    src: "/tmp/backend-dist.tar.gz"
+    dest: "/tmp/backend-dist.tar.gz"
+    owner: ec2-user
+    group: ec2-user
+    mode: '0644'
+
+- name: Upload prisma tarball to target
+  ansible.builtin.copy:
+    src: "/tmp/backend-prisma.tar.gz"
+    dest: "/tmp/backend-prisma.tar.gz"
+    owner: ec2-user
+    group: ec2-user
+    mode: '0644'
+
+# 4d. Descomprimir en el release path → produce release_path/dist/ y release_path/prisma/
+- name: Extract dist tarball on target
+  ansible.builtin.unarchive:
+    src: "/tmp/backend-dist.tar.gz"
+    dest: "{{ backend_release_path }}/"
+    remote_src: true
+    owner: ec2-user
+    group: ec2-user
+
+- name: Extract prisma tarball on target
+  ansible.builtin.unarchive:
+    src: "/tmp/backend-prisma.tar.gz"
+    dest: "{{ backend_release_path }}/"
+    remote_src: true
+    owner: ec2-user
+    group: ec2-user
+
+# 4e. Limpiar tarballs temporales en ambos lados
+- name: Remove temporary tarballs on controller
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/backend-dist.tar.gz
+    - /tmp/backend-prisma.tar.gz
+  delegate_to: localhost
+  become: false
+
+- name: Remove temporary tarballs on target
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/backend-dist.tar.gz
+    - /tmp/backend-prisma.tar.gz
+
+# 4f. Asegurar permisos correctos en los directorios descomprimidos
+- name: Ensure directory permissions on release path
   ansible.builtin.file:
     path: "{{ backend_release_path }}/{{ item }}"
     state: directory
