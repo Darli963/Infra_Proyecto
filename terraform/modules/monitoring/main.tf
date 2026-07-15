@@ -223,7 +223,7 @@ resource "aws_instance" "this" {
   instance_type        = "t3.small"
   subnet_id            = var.private_subnet_ids[0]
   key_name             = var.key_pair_name
-  security_groups      = [aws_security_group.monitoring.id]
+  vpc_security_group_ids = [aws_security_group.monitoring.id]
   iam_instance_profile = aws_iam_instance_profile.monitoring.name
 
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
@@ -243,11 +243,8 @@ resource "aws_instance" "this" {
       aws_region = data.aws_region.current.name
     })
     grafana_dashboards = file("${path.module}/files/grafana/provisioning/dashboards/dashboards.yml")
-    grafana_dashboard_json = templatefile("${path.module}/files/grafana/provisioning/dashboards/main-dashboard.json", {
-      alb_arn_suffix    = var.alb_arn_suffix
-      aurora_cluster_id = var.aurora_cluster_id
-      aws_region        = data.aws_region.current.name
-    })
+    alb_arn_suffix      = var.alb_arn_suffix
+    aurora_cluster_id   = var.aurora_cluster_id
   }))
 
   tags = {

@@ -3,10 +3,7 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": {
-          "type": "datasource",
-          "uid": "grafana"
-        },
+        "datasource": { "type": "datasource", "uid": "grafana" },
         "enable": true,
         "hide": true,
         "name": "Annotations & Alerts",
@@ -22,26 +19,14 @@
   "liveNow": false,
   "panels": [
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "id": 1,
       "title": "CPU Utilization (Node Exporter)",
       "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
           "editorMode": "code",
           "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
           "legendFormat": "{{instance}}",
@@ -51,35 +36,20 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth"
-          },
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth" },
           "unit": "percent"
         }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
       "id": 2,
       "title": "Memory Utilization (Node Exporter)",
       "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
           "editorMode": "code",
           "expr": "100 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100)",
           "legendFormat": "{{instance}}",
@@ -89,304 +59,147 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth"
-          },
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth" },
           "unit": "percent"
         }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 8
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "id": 3,
       "title": "ALB Target Response Time (CloudWatch)",
       "type": "timeseries",
-      "datasource": {
-        "type": "cloudwatch",
-        "uid": "CloudWatch"
-      },
+      "datasource": { "type": "cloudwatch", "uid": "CloudWatch" },
       "targets": [
         {
-          "datasource": {
-            "type": "cloudwatch",
-            "uid": "CloudWatch"
-          },
+          "datasource": { "type": "cloudwatch", "uid": "CloudWatch" },
           "namespace": "AWS/ApplicationELB",
           "metricName": "TargetResponseTime",
           "statistic": "Average",
-          "dimensions": {
-            "LoadBalancer": "${alb_arn_suffix}"
-          },
-          "region": "${aws_region}",
-          "refId": "A"
+          "dimensions": { "LoadBalancer": "__ALB__" },
+          "region": "__REGION__",
+          "refId": "A",
+          "period": "60"
         }
       ],
       "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line"
-          },
-          "unit": "s"
-        }
+        "defaults": { "custom": { "drawStyle": "line" }, "unit": "s" }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 8
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "id": 4,
       "title": "ALB HTTP 5XX Count (CloudWatch)",
       "type": "timeseries",
-      "datasource": {
-        "type": "cloudwatch",
-        "uid": "CloudWatch"
-      },
+      "datasource": { "type": "cloudwatch", "uid": "CloudWatch" },
       "targets": [
         {
-          "datasource": {
-            "type": "cloudwatch",
-            "uid": "CloudWatch"
-          },
+          "datasource": { "type": "cloudwatch", "uid": "CloudWatch" },
           "namespace": "AWS/ApplicationELB",
           "metricName": "HTTPCode_Target_5XX_Count",
           "statistic": "Sum",
-          "dimensions": {
-            "LoadBalancer": "${alb_arn_suffix}"
-          },
-          "region": "${aws_region}",
-          "refId": "A"
+          "dimensions": { "LoadBalancer": "__ALB__" },
+          "region": "__REGION__",
+          "refId": "A",
+          "period": "60"
         }
       ],
       "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "bar"
-          },
-          "unit": "none"
-        }
+        "defaults": { "custom": { "drawStyle": "bar" }, "unit": "none" }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 16
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
       "id": 5,
       "title": "Aurora Database Connections (CloudWatch)",
       "type": "timeseries",
-      "datasource": {
-        "type": "cloudwatch",
-        "uid": "CloudWatch"
-      },
+      "datasource": { "type": "cloudwatch", "uid": "CloudWatch" },
       "targets": [
         {
-          "datasource": {
-            "type": "cloudwatch",
-            "uid": "CloudWatch"
-          },
+          "datasource": { "type": "cloudwatch", "uid": "CloudWatch" },
           "namespace": "AWS/RDS",
           "metricName": "DatabaseConnections",
           "statistic": "Average",
-          "dimensions": {
-            "DBClusterIdentifier": "${aurora_cluster_id}"
-          },
-          "region": "${aws_region}",
-          "refId": "A"
+          "dimensions": { "DBClusterIdentifier": "__AURORA__" },
+          "region": "__REGION__",
+          "refId": "A",
+          "period": "60"
         }
       ],
       "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line"
-          },
-          "unit": "none"
-        }
+        "defaults": { "custom": { "drawStyle": "line" }, "unit": "none" }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
       "id": 6,
       "title": "Aurora CPU Utilization (CloudWatch)",
       "type": "timeseries",
-      "datasource": {
-        "type": "cloudwatch",
-        "uid": "CloudWatch"
-      },
+      "datasource": { "type": "cloudwatch", "uid": "CloudWatch" },
       "targets": [
         {
-          "datasource": {
-            "type": "cloudwatch",
-            "uid": "CloudWatch"
-          },
+          "datasource": { "type": "cloudwatch", "uid": "CloudWatch" },
           "namespace": "AWS/RDS",
           "metricName": "CPUUtilization",
           "statistic": "Average",
-          "dimensions": {
-            "DBClusterIdentifier": "${aurora_cluster_id}"
-          },
-          "region": "${aws_region}",
-          "refId": "A"
+          "dimensions": { "DBClusterIdentifier": "__AURORA__" },
+          "region": "__REGION__",
+          "refId": "A",
+          "period": "60"
         }
       ],
       "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line"
-          },
-          "unit": "percent"
-        }
+        "defaults": { "custom": { "drawStyle": "line" }, "unit": "percent" }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 48
-      },
-      "id": 7,
-      "title": "Application Error Logs (Loki)",
-      "type": "logs",
-      "datasource": {
-        "type": "loki",
-        "uid": "Loki"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "Loki"
-          },
-          "expr": "{job=\"app_logs\"} | json | level=\"error\"",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "showLabels": true,
-        "wrapLogMessage": true,
-        "enableLogDetails": true,
-        "sortOrder": "Descending"
-      }
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 24
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
       "id": 8,
       "title": "Acceso al sistema (Loki)",
       "type": "piechart",
-      "datasource": {
-        "type": "loki",
-        "uid": "Loki"
-      },
+      "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "Loki"
-          },
-          "expr": "sum by(action) (count_over_time({job=\"app_logs\"} | json | action!=\"\" [$$__interval]))",
+          "datasource": { "type": "loki", "uid": "Loki" },
+          "expr": "sum by(endpoint) (count_over_time({job=\"app_logs\"} | json | endpoint!=\"\" [$__interval]))",
           "refId": "A"
         }
       ],
       "options": {
         "pieType": "pie",
-        "reduceOptions": {
-          "values": true,
-          "calcs": ["lastNotNull"]
-        },
-        "legend": {
-          "displayMode": "list",
-          "placement": "right",
-          "values": ["value"]
-        }
+        "reduceOptions": { "values": true, "calcs": ["lastNotNull"] },
+        "legend": { "displayMode": "list", "placement": "right", "values": ["value"] }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 24
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
       "id": 9,
       "title": "Tipo de alerta (Loki)",
       "type": "piechart",
-      "datasource": {
-        "type": "loki",
-        "uid": "Loki"
-      },
+      "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "Loki"
-          },
-          "expr": "sum by(level) (count_over_time({job=\"app_logs\"} | json | level!=\"\" [$$__interval]))",
+          "datasource": { "type": "loki", "uid": "Loki" },
+          "expr": "sum by(level) (count_over_time({job=\"app_logs\"} | json | level!=\"\" [$__interval]))",
           "refId": "A"
         }
       ],
       "options": {
         "pieType": "donut",
-        "reduceOptions": {
-          "values": true,
-          "calcs": ["lastNotNull"]
-        },
-        "legend": {
-          "displayMode": "list",
-          "placement": "right",
-          "values": ["value"]
-        }
+        "reduceOptions": { "values": true, "calcs": ["lastNotNull"] },
+        "legend": { "displayMode": "list", "placement": "right", "values": ["value"] }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 32
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
       "id": 10,
       "title": "Uso de endpoints (Loki)",
       "type": "barchart",
-      "datasource": {
-        "type": "loki",
-        "uid": "Loki"
-      },
+      "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "Loki"
-          },
-          "expr": "sum by(endpoint) (count_over_time({job=\"app_logs\"} | json | endpoint!=\"\" [$$__interval]))",
+          "datasource": { "type": "loki", "uid": "Loki" },
+          "expr": "sum by(endpoint) (count_over_time({job=\"app_logs\"} | json | endpoint!=\"\" [$__interval]))",
           "refId": "A"
         }
       ],
@@ -396,35 +209,19 @@
         "barWidth": 0.6,
         "groupWidth": 0.7,
         "stacking": "none",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "values": ["value"]
-        }
+        "legend": { "displayMode": "list", "placement": "bottom", "values": ["value"] }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 32
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
       "id": 11,
       "title": "Ingreso al sistema por usuario (Loki)",
       "type": "barchart",
-      "datasource": {
-        "type": "loki",
-        "uid": "Loki"
-      },
+      "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "Loki"
-          },
-          "expr": "sum by(user) (count_over_time({job=\"app_logs\"} | json | action=\"User login\" [$$__interval]))",
+          "datasource": { "type": "loki", "uid": "Loki" },
+          "expr": "sum by(endpoint) (count_over_time({job=\"app_logs\"} | json | endpoint=~\"/api/auth/.*\" [$__interval]))",
           "refId": "A"
         }
       ],
@@ -434,35 +231,19 @@
         "barWidth": 0.6,
         "groupWidth": 0.7,
         "stacking": "none",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "values": ["value"]
-        }
+        "legend": { "displayMode": "list", "placement": "bottom", "values": ["value"] }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 40
-      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 40 },
       "id": 12,
       "title": "Uso de métodos HTTPS (Loki)",
       "type": "barchart",
-      "datasource": {
-        "type": "loki",
-        "uid": "Loki"
-      },
+      "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "Loki"
-          },
-          "expr": "sum by(method) (count_over_time({job=\"app_logs\"} | json | method!=\"\" [$$__interval]))",
+          "datasource": { "type": "loki", "uid": "Loki" },
+          "expr": "sum by(method) (count_over_time({job=\"app_logs\"} | json | method!=\"\" [$__interval]))",
           "refId": "A"
         }
       ],
@@ -472,35 +253,19 @@
         "barWidth": 0.6,
         "groupWidth": 0.7,
         "stacking": "none",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "values": ["value"]
-        }
+        "legend": { "displayMode": "list", "placement": "bottom", "values": ["value"] }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 40
-      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 40 },
       "id": 13,
       "title": "IPs logueadas (Loki)",
       "type": "barchart",
-      "datasource": {
-        "type": "loki",
-        "uid": "Loki"
-      },
+      "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "Loki"
-          },
-          "expr": "sum by(ip) (count_over_time({job=\"app_logs\"} | json | ip!=\"\" [$$__interval]))",
+          "datasource": { "type": "loki", "uid": "Loki" },
+          "expr": "sum by(ip) (count_over_time({job=\"app_logs\"} | json | ip!=\"\" [$__interval]))",
           "refId": "A"
         }
       ],
@@ -510,35 +275,19 @@
         "barWidth": 0.6,
         "groupWidth": 0.7,
         "stacking": "none",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "values": ["value"]
-        }
+        "legend": { "displayMode": "list", "placement": "bottom", "values": ["value"] }
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 40
-      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 40 },
       "id": 14,
       "title": "Recuento de Request Status (Loki)",
       "type": "barchart",
-      "datasource": {
-        "type": "loki",
-        "uid": "Loki"
-      },
+      "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "Loki"
-          },
-          "expr": "sum by(status) (count_over_time({job=\"app_logs\"} | json | status!=\"\" [$$__interval]))",
+          "datasource": { "type": "loki", "uid": "Loki" },
+          "expr": "sum by(status) (count_over_time({job=\"app_logs\"} | json | status!=\"\" [$__interval]))",
           "refId": "A"
         }
       ],
@@ -548,11 +297,27 @@
         "barWidth": 0.6,
         "groupWidth": 0.7,
         "stacking": "none",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "values": ["value"]
+        "legend": { "displayMode": "list", "placement": "bottom", "values": ["value"] }
+      }
+    },
+    {
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 48 },
+      "id": 7,
+      "title": "Application Error Logs (Loki)",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "Loki" },
+          "expr": "{job=\"app_logs\"} | json | level=~\"error|warn\"",
+          "refId": "A"
         }
+      ],
+      "options": {
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
       }
     }
   ],

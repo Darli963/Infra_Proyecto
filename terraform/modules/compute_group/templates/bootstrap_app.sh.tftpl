@@ -125,12 +125,25 @@ EOF
     --query "Reservations[*].Instances[*].PrivateIpAddress" \
     --output text | head -n1)
 
+  # Crear directorios de log adicionales para el backend real (Ansible lo usa)
+  mkdir -p /var/log/app
+  touch /var/log/app/app.log
+  touch /var/log/phase4-smoke-app.log
+  chown ec2-user:ec2-user /var/log/app/app.log /var/log/phase4-smoke-app.log
+  chmod 644 /var/log/app/app.log /var/log/phase4-smoke-app.log
+
   if [ -n "$MONITORING_IP" ]; then
     echo "Instancia de monitoreo encontrada en IP: $MONITORING_IP"
     mkdir -p /etc/alloy
     cat <<EOF > /etc/alloy/config.alloy
+// Recoge logs del bootstrap app (/var/log/app/app.log)
+// y del backend real desplegado por Ansible (/var/log/phase4-smoke-app.log)
 local.file_match "app_logs" {
-  path_targets = [{"__path__" = "/var/log/app/*.log"}]
+  path_targets = [
+    {"__path__" = "/var/log/app/*.log"},
+    {"__path__" = "/var/log/phase4-smoke-app.log"},
+    {"__path__" = "/var/log/phase4-smoke-app*.log"},
+  ]
 }
 
 loki.source.file "app_logs" {
@@ -144,6 +157,10 @@ loki.relabel "app_logs" {
     target_label = "job"
     replacement  = "app_logs"
   }
+  rule {
+    source_labels = ["__path__"]
+    target_label  = "filename"
+  }
 }
 
 loki.write "monitoring" {
@@ -156,8 +173,58 @@ EOF
     systemctl daemon-reload
     systemctl enable --now alloy
     systemctl restart alloy
+    echo "Alloy configurado y en ejecucion, enviando logs a http://$MONITORING_IP:3100"
   else
-    echo "ADVERTENCIA: No se encontro la instancia de monitoreo para configurar Alloy."
+    echo "ADVERTENCIA: No se encontro la instancia de monitoreo para configurar Alloy. Reintentando en 60s..."
+    # Reintentar una vez tras 60 segundos (la instancia de monitoring puede estar iniciando)
+    sleep 60
+    MONITORING_IP=$(aws ec2 describe-instances \
+      --region "${aws_region}" \
+      --filters "Name=tag:Role,Values=monitoring" "Name=instance-state-name,Values=running" \
+      --query "Reservations[*].Instances[*].PrivateIpAddress" \
+      --output text | head -n1)
+    if [ -n "$MONITORING_IP" ]; then
+      echo "Instancia de monitoreo encontrada en segundo intento: $MONITORING_IP"
+      mkdir -p /etc/alloy
+      cat <<EOF > /etc/alloy/config.alloy
+local.file_match "app_logs" {
+  path_targets = [
+    {"__path__" = "/var/log/app/*.log"},
+    {"__path__" = "/var/log/phase4-smoke-app.log"},
+    {"__path__" = "/var/log/phase4-smoke-app*.log"},
+  ]
+}
+
+loki.source.file "app_logs" {
+  targets    = local.file_match.app_logs.targets
+  forward_to = [loki.relabel.app_logs.receiver]
+}
+
+loki.relabel "app_logs" {
+  forward_to = [loki.write.monitoring.receiver]
+  rule {
+    target_label = "job"
+    replacement  = "app_logs"
+  }
+  rule {
+    source_labels = ["__path__"]
+    target_label  = "filename"
+  }
+}
+
+loki.write "monitoring" {
+  endpoint {
+    url = "http://$MONITORING_IP:3100/loki/api/v1/push"
+  }
+}
+EOF
+      systemctl daemon-reload
+      systemctl enable --now alloy
+      systemctl restart alloy
+      echo "Alloy configurado en segundo intento, enviando logs a http://$MONITORING_IP:3100"
+    else
+      echo "ERROR: No se pudo encontrar la instancia de monitoreo tras dos intentos. Alloy no se configurara."
+    fi
   fi
 fi
 
