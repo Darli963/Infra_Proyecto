@@ -97,6 +97,23 @@ export const motorcycleService = {
 
   async remove(id: string, dealershipId: string) {
     await motorcycleService.findOwned(id, dealershipId);
-    await prisma.motorcycle.delete({ where: { id } });
+
+    // Verificar si existen cotizaciones asociadas a esta motocicleta
+    const quotesCount = await prisma.quoteSimulation.count({
+      where: { motorcycleId: id },
+    });
+
+    if (quotesCount > 0) {
+      // Si hay cotizaciones, realizamos un borrado lógico (desactivar)
+      await prisma.motorcycle.update({
+        where: { id },
+        data: { active: false },
+      });
+    } else {
+      // Si no hay cotizaciones, la eliminamos físicamente de la base de datos
+      await prisma.motorcycle.delete({
+        where: { id },
+      });
+    }
   },
 };
