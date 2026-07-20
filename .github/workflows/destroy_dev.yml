@@ -72,8 +72,8 @@ jobs:
 
       - name: Terraform plan (destroy)
         working-directory: terraform/environments/dev
-        run: terraform plan -destroy -input=false -var-file="dev.tfvars"
+        run: terraform plan -destroy -input=false -lock=false -var-file="dev.tfvars"
 
       - name: Terraform destroy
         working-directory: terraform/environments/dev
-        run: terraform destroy -input=false -auto-approve -var-file="dev.tfvars"
+        run: terraform destroy -input=false -lock=false -auto-approve -var-file="dev.tfvars"
