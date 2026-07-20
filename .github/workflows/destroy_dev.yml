@@ -50,6 +50,22 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: gha-destroy-dev
 
+      - name: Liberar candado atascado en DynamoDB (si existe)
+        env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          TF_LOCK_TABLE:   ${{ vars.TF_LOCK_TABLE }}
+        run: |
+          set -euo pipefail
+          echo "Limpiando candados en DynamoDB table: ${TF_LOCK_TABLE}..."
+          aws dynamodb delete-item \
+            --table-name "${TF_LOCK_TABLE}" \
+            --key "{\"LockID\": {\"S\": \"${TF_STATE_BUCKET}/dev/terraform.tfstate\"}}" \
+            --region "${AWS_REGION}" 2>/dev/null || true
+          aws dynamodb delete-item \
+            --table-name "${TF_LOCK_TABLE}" \
+            --key "{\"LockID\": {\"S\": \"${TF_STATE_BUCKET}/dev/terraform.tfstate-md5\"}}" \
+            --region "${AWS_REGION}" 2>/dev/null || true
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
