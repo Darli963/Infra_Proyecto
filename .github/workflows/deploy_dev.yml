@@ -1,0 +1,428 @@
+name: Deploy Dev
+
+on:
+  workflow_dispatch:
+
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  TF_VERSION: "1.9.8"
+  AWS_REGION: ${{ vars.AWS_REGION != '' && vars.AWS_REGION || 'us-east-1' }}
+  TF_IN_AUTOMATION: "true"
+  AWS_EC2_METADATA_DISABLED: "true"
+  ENVIRONMENT: "dev"
+
+jobs:
+  deploy-infra:
+    name: Terraform apply dev
+    runs-on: ubuntu-latest
+    environment: dev
+    timeout-minutes: 20
+    outputs:
+      monitoring_instance_id: ${{ steps.tf-outputs.outputs.monitoring_instance_id }}
+      grafana_private_ip:      ${{ steps.tf-outputs.outputs.grafana_private_ip }}
+      grafana_url:             ${{ steps.tf-outputs.outputs.grafana_url }}
+      storage_bucket_name:     ${{ steps.tf-outputs.outputs.storage_bucket_name }}
+      cloudfront_domain:       ${{ steps.tf-outputs.outputs.cloudfront_domain }}
+      cloudfront_distribution_id: ${{ steps.tf-outputs.outputs.cloudfront_distribution_id }}
+      cognito_user_pool_id:    ${{ steps.tf-outputs.outputs.cognito_user_pool_id }}
+      cognito_client_id:       ${{ steps.tf-outputs.outputs.cognito_client_id }}
+      cognito_user_pool_endpoint: ${{ steps.tf-outputs.outputs.cognito_user_pool_endpoint }}
+      aurora_secret_name:      ${{ steps.tf-outputs.outputs.aurora_secret_name }}
+      test_instance_id:        ${{ steps.tf-outputs.outputs.test_instance_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validar configuracion requerida de GitHub Actions
+        env:
+          AWS_ROLE_ARN:    ${{ vars.AWS_ROLE_ARN }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          TF_LOCK_TABLE:   ${{ vars.TF_LOCK_TABLE }}
+        run: |
+          set -euo pipefail
+          for required_var in AWS_ROLE_ARN TF_STATE_BUCKET TF_LOCK_TABLE; do
+            if [ -z "${!required_var}" ]; then
+              echo "::error::Falta configurar la variable ${required_var} en el environment dev."
+              exit 1
+            fi
+          done
+
+      - name: Configurar credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-deploy-dev
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform init
+        working-directory: terraform/environments/dev
+        run: |
+          terraform init -input=false -reconfigure \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=dev/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      # FIX #11: describe-secret falla con exit 1 si el secreto no existe.
+      # El 2>/dev/null absorbe el error de la llamada, el || true protege el pipeline.
+      - name: Purgar secretos pendientes de eliminacion (solo dev)
+        if: env.ENVIRONMENT == 'dev'
+        run: |
+          set -euo pipefail
+          for s in redis aurora app-config grafana; do
+            DELETED_DATE=$(aws secretsmanager describe-secret \
+              --secret-id "infra-proyecto/dev/$s" \
+              --query 'DeletedDate' --output text 2>/dev/null || echo "None")
+            if [ "$DELETED_DATE" != "None" ] && [ "$DELETED_DATE" != "null" ] && [ -n "$DELETED_DATE" ]; then
+              echo "Eliminando secreto pendiente: infra-proyecto/dev/$s"
+              aws secretsmanager delete-secret \
+                --secret-id "infra-proyecto/dev/$s" \
+                --force-delete-without-recovery
+            fi
+          done
+
+      - name: Terraform apply
+        working-directory: terraform/environments/dev
+        run: terraform apply -input=false -auto-approve -var-file="dev.tfvars"
+
+      - name: Extract Terraform outputs
+        id: tf-outputs
+        working-directory: terraform/environments/dev
+        run: |
+          set -euo pipefail
+
+          AURORA_SECRET_NAME=$(terraform output -raw aurora_secret_name)
+          S3_BUCKET_NAME=$(terraform output -raw storage_bucket_name)
+          CLOUDFRONT_DOMAIN=$(terraform output -raw cloudfront_distribution_domain_name)
+          CLOUDFRONT_DISTRIBUTION_ID=$(terraform output -raw cloudfront_distribution_id)
+          COGNITO_USER_POOL_ID=$(terraform output -raw cognito_user_pool_id)
+          COGNITO_CLIENT_ID=$(terraform output -raw cognito_client_id)
+          COGNITO_USER_POOL_ENDPOINT=$(terraform output -raw cognito_user_pool_endpoint)
+          TEST_INSTANCE_ID=$(terraform output -raw test_instance_id)
+
+          # Outputs opcionales del modulo de monitoreo
+          MONITORING_INSTANCE_ID=$(terraform output -json | jq -r '.monitoring_instance_id.value // empty')
+          GRAFANA_PRIVATE_IP=$(terraform output -json | jq -r '.grafana_private_ip.value // empty')
+          GRAFANA_URL=$(terraform output -json | jq -r '.grafana_url.value // empty')
+
+          for var in AURORA_SECRET_NAME S3_BUCKET_NAME CLOUDFRONT_DOMAIN CLOUDFRONT_DISTRIBUTION_ID \
+                     COGNITO_USER_POOL_ID COGNITO_CLIENT_ID TEST_INSTANCE_ID; do
+            if [ -z "${!var}" ] || [ "${!var}" = "null" ]; then
+              echo "::error::Terraform output ${var} is empty or null"
+              exit 1
+            fi
+          done
+
+          echo "aurora_secret_name=${AURORA_SECRET_NAME}"               >> "$GITHUB_OUTPUT"
+          echo "storage_bucket_name=${S3_BUCKET_NAME}"                  >> "$GITHUB_OUTPUT"
+          echo "cloudfront_domain=${CLOUDFRONT_DOMAIN}"                 >> "$GITHUB_OUTPUT"
+          echo "cloudfront_distribution_id=${CLOUDFRONT_DISTRIBUTION_ID}" >> "$GITHUB_OUTPUT"
+          echo "cognito_user_pool_id=${COGNITO_USER_POOL_ID}"           >> "$GITHUB_OUTPUT"
+          echo "cognito_client_id=${COGNITO_CLIENT_ID}"                 >> "$GITHUB_OUTPUT"
+          echo "cognito_user_pool_endpoint=${COGNITO_USER_POOL_ENDPOINT}" >> "$GITHUB_OUTPUT"
+          echo "test_instance_id=${TEST_INSTANCE_ID}"                   >> "$GITHUB_OUTPUT"
+          echo "monitoring_instance_id=${MONITORING_INSTANCE_ID}"       >> "$GITHUB_OUTPUT"
+          echo "grafana_private_ip=${GRAFANA_PRIVATE_IP}"               >> "$GITHUB_OUTPUT"
+          echo "grafana_url=${GRAFANA_URL}"                             >> "$GITHUB_OUTPUT"
+
+  deploy-app:
+    name: App deploy dev
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: deploy-infra
+    timeout-minutes: 40
+    env:
+      AURORA_SECRET_NAME:          ${{ needs.deploy-infra.outputs.aurora_secret_name }}
+      S3_BUCKET_NAME:              ${{ needs.deploy-infra.outputs.storage_bucket_name }}
+      CLOUDFRONT_DOMAIN:           ${{ needs.deploy-infra.outputs.cloudfront_domain }}
+      CLOUDFRONT_DISTRIBUTION_ID:  ${{ needs.deploy-infra.outputs.cloudfront_distribution_id }}
+      COGNITO_USER_POOL_ID:        ${{ needs.deploy-infra.outputs.cognito_user_pool_id }}
+      COGNITO_CLIENT_ID:           ${{ needs.deploy-infra.outputs.cognito_client_id }}
+      COGNITO_USER_POOL_ENDPOINT:  ${{ needs.deploy-infra.outputs.cognito_user_pool_endpoint }}
+      TEST_INSTANCE_ID:            ${{ needs.deploy-infra.outputs.test_instance_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-deploy-app-dev
+
+      # FIX #8: El frontend necesita Node.js en el runner para npm ci + npm run build
+      # (el build lo hace internamente deploy_frontend.yml).
+      # Usamos la acción oficial para garantizar la versión correcta.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            api-sistema-cotizacion/backend/package-lock.json
+            api-sistema-cotizacion/frontend/package-lock.json
+
+      # FIX #1 + #2: El build corre en ubuntu-latest (linux-x64 = rhel-openssl-3.0.x).
+      # Amazon Linux 2023 usa el mismo ABI linux-x64 por lo que el binario sirve,
+      # PERO es más seguro regenerar Prisma en la instancia (lo hace el rol backend).
+      # Lo que SÍ necesitamos aquí es compilar TypeScript y que dist/ + prisma/ queden
+      # disponibles para que Ansible los empaquete y suba.
+      - name: Build backend
+        working-directory: api-sistema-cotizacion/backend
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+          # Copiar schema.prisma al dist/ para que start.js pueda invocar prisma generate
+          # en la instancia si el binario no matchea
+          cp -r prisma/schema.prisma dist/schema.prisma || true
+          echo "=== Contenido de dist/ ==="
+          ls -la dist/
+          echo "=== Contenido de prisma/ ==="
+          ls -la prisma/
+
+      - name: Instalar dependencias de Ansible y Session Manager Plugin
+        run: |
+          set -euo pipefail
+
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends curl unzip
+
+          python3 -m pip install --upgrade pip --quiet
+          python3 -m pip install ansible "boto3>=1.35.0" "botocore>=1.35.0" --quiet
+
+          ansible-galaxy collection install -r ansible/requirements.yml --force
+
+          curl -fsSL "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" \
+            -o /tmp/session-manager-plugin.deb
+          sudo dpkg -i /tmp/session-manager-plugin.deb
+
+          echo "=== Versions ==="
+          ansible --version | head -1
+          session-manager-plugin --version
+
+      - name: Esperar a que la instancia dev aparezca en Session Manager
+        run: |
+          set -euo pipefail
+
+          instance_id="${TEST_INSTANCE_ID}"
+          if [ -z "${instance_id}" ] || [ "${instance_id}" = "null" ]; then
+            echo "::error::No se pudo resolver test_instance_id desde Terraform."
+            exit 1
+          fi
+
+          echo "Esperando SSM Online para instancia ${instance_id}..."
+          for attempt in $(seq 1 24); do
+            ping_status="$(aws ssm describe-instance-information \
+              --region "${AWS_REGION}" \
+              --filters "Key=InstanceIds,Values=${instance_id}" \
+              --query 'InstanceInformationList[0].PingStatus' \
+              --output text 2>/dev/null || echo 'Unknown')"
+
+            echo "Intento ${attempt}/24 — PingStatus: ${ping_status}"
+            if [ "${ping_status}" = "Online" ]; then
+              echo "Instancia ${instance_id} disponible en SSM."
+              exit 0
+            fi
+            sleep 15
+          done
+
+          echo "::error::La instancia ${instance_id} no quedó disponible en SSM a tiempo."
+          exit 1
+
+      - name: Ejecutar bootstrap por Ansible sobre dev
+        env:
+          ANSIBLE_AWS_SSM_BUCKET_NAME: ${{ env.S3_BUCKET_NAME }}
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          # community.general.yaml fue eliminado en community.general 12.0.0.
+          # Usar el callback nativo de ansible-core con result_format=yaml.
+          ANSIBLE_STDOUT_CALLBACK: default
+          ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
+        run: |
+          set -euo pipefail
+          ansible-playbook \
+            -i ansible/inventory/aws_ec2.yml \
+            ansible/playbooks/bootstrap.yml \
+            -e target_hosts=deploy_dev
+
+      - name: Desplegar backend en dev por Ansible
+        env:
+          ANSIBLE_AWS_SSM_BUCKET_NAME: ${{ env.S3_BUCKET_NAME }}
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_STDOUT_CALLBACK: default
+          ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
+        run: |
+          set -euo pipefail
+          ansible-playbook \
+            -i ansible/inventory/aws_ec2.yml \
+            ansible/playbooks/deploy_backend.yml \
+            -e target_hosts=deploy_dev \
+            -e backend_aurora_secret_name="${AURORA_SECRET_NAME}" \
+            -e backend_s3_bucket_name="${S3_BUCKET_NAME}" \
+            -e backend_cloudfront_url="https://${CLOUDFRONT_DOMAIN}" \
+            -e backend_aws_region="${AWS_REGION}" \
+            -e backend_cognito_user_pool_id="${COGNITO_USER_POOL_ID}" \
+            -e backend_cognito_client_id="${COGNITO_CLIENT_ID}" \
+            -e "backend_cognito_user_pool_endpoint=${COGNITO_USER_POOL_ENDPOINT}"
+
+      - name: Desplegar frontend en dev por Ansible
+        env:
+          ANSIBLE_STDOUT_CALLBACK: default
+          ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
+        run: |
+          set -euo pipefail
+          ansible-playbook \
+            ansible/playbooks/deploy_frontend.yml \
+            -e frontend_cloudfront_domain="${CLOUDFRONT_DOMAIN}" \
+            -e frontend_cloudfront_distribution_id="${CLOUDFRONT_DISTRIBUTION_ID}" \
+            -e frontend_s3_bucket="${S3_BUCKET_NAME}" \
+            -e frontend_aws_region="${AWS_REGION}" \
+            -e frontend_cognito_user_pool_id="${COGNITO_USER_POOL_ID}" \
+            -e frontend_cognito_client_id="${COGNITO_CLIENT_ID}"
+
+      # FIX #6: CLOUDFRONT_DOMAIN está en el job env, accesible directamente con $CLOUDFRONT_DOMAIN.
+      # Se usa la variable de entorno del job, no una del step — esto ya era correcto porque
+      # el job env se exporta al shell. Lo reforzamos con una verificación explícita.
+      - name: Validar despliegue
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CLOUDFRONT_DOMAIN}" ] || [ "${CLOUDFRONT_DOMAIN}" = "null" ]; then
+            echo "::error::CLOUDFRONT_DOMAIN no está definido en este step."
+            exit 1
+          fi
+
+          echo "Validando health check en https://${CLOUDFRONT_DOMAIN}/api/healthz"
+
+          for attempt in $(seq 1 12); do
+            status=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 30 \
+              "https://${CLOUDFRONT_DOMAIN}/api/healthz" || echo "000")
+
+            echo "Intento ${attempt}/12 — HTTP ${status}"
+
+            if [ "${status}" = "200" ]; then
+              echo "Health check exitoso (HTTP 200)"
+              exit 0
+            fi
+
+            [ "${attempt}" -lt 12 ] && sleep 15
+          done
+
+          echo "::error::Health check falló después de 12 intentos. Último HTTP status: ${status}"
+          exit 1
+
+  # FIX #10: timeout-minutes agregado para evitar bloqueo indefinido del pipeline
+  validate-monitoring:
+    name: Validar stack de monitoreo
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: deploy-infra
+    timeout-minutes: 15
+    if: needs.deploy-infra.outputs.monitoring_instance_id != ''
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-monitor-dev
+
+      - name: Esperar a que la instancia de monitoring aparezca en Session Manager
+        run: |
+          set -euo pipefail
+          instance_id="${{ needs.deploy-infra.outputs.monitoring_instance_id }}"
+
+          if [ -z "${instance_id}" ] || [ "${instance_id}" = "null" ]; then
+            echo "No se pudo resolver el ID de la instancia de monitoreo. Omitiendo..."
+            exit 0
+          fi
+
+          for attempt in $(seq 1 20); do
+            ping_status="$(aws ssm describe-instance-information \
+              --region "${AWS_REGION}" \
+              --filters "Key=InstanceIds,Values=${instance_id}" \
+              --query 'InstanceInformationList[0].PingStatus' \
+              --output text 2>/dev/null || echo 'Unknown')"
+
+            echo "Intento ${attempt}/20 — PingStatus: ${ping_status}"
+            if [ "${ping_status}" = "Online" ]; then
+              echo "Instancia de monitoreo ${instance_id} disponible en SSM."
+              exit 0
+            fi
+            sleep 15
+          done
+
+          echo "::error::La instancia de monitoreo ${instance_id} no quedó disponible en SSM a tiempo."
+          exit 1
+
+      - name: Validar que Grafana, Prometheus y Loki respondan
+        run: |
+          set -euo pipefail
+          instance_id="${{ needs.deploy-infra.outputs.monitoring_instance_id }}"
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$instance_id" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["for i in $(seq 1 30); do if curl -sf http://localhost:3000/api/health && curl -sf http://localhost:9090/-/healthy && curl -sf http://localhost:3100/ready; then echo \"Monitoreo OK\"; exit 0; fi; echo \"Esperando inicio... intento $i/30\"; sleep 10; done; echo \"ERROR: stack de monitoreo no respondio\"; exit 1"]' \
+            --region "${AWS_REGION}" \
+            --query "Command.CommandId" --output text)
+
+          echo "Comando SSM enviado. ID: $COMMAND_ID"
+
+          for attempt in $(seq 1 40); do
+            status=$(aws ssm list-commands \
+              --region "${AWS_REGION}" \
+              --command-id "$COMMAND_ID" \
+              --query "Commands[0].Status" \
+              --output text 2>/dev/null || echo "Unknown")
+
+            echo "Estado del comando (intento $attempt/40): $status"
+
+            if [ "$status" = "Success" ]; then
+              echo "Validacion de monitoreo exitosa."
+              aws ssm get-command-invocation \
+                --region "${AWS_REGION}" \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$instance_id" \
+                --query "StandardOutputContent" --output text
+              exit 0
+            fi
+
+            if [ "$status" = "Failed" ] || [ "$status" = "Cancelled" ] || [ "$status" = "TimedOut" ]; then
+              echo "::error::El comando de validacion fallo con estado: $status"
+              aws ssm get-command-invocation \
+                --region "${AWS_REGION}" \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$instance_id" \
+                --query "[StandardOutputContent, StandardErrorContent]" --output json || true
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "::error::Tiempo de espera agotado esperando la ejecucion del comando SSM."
+          exit 1
